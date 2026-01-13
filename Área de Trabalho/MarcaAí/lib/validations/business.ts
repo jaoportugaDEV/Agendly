@@ -6,9 +6,7 @@ export const createBusinessSchema = z.object({
     .min(1, 'Nome da empresa é obrigatório')
     .min(3, 'Nome deve ter no mínimo 3 caracteres')
     .max(255, 'Nome deve ter no máximo 255 caracteres'),
-  countryCode: z.enum(['PT', 'BR'], {
-    required_error: 'País é obrigatório',
-  }),
+  countryCode: z.enum(['PT', 'BR']),
   businessType: z
     .string()
     .min(1, 'Tipo de negócio é obrigatório'),
@@ -91,9 +89,7 @@ export const inviteMemberSchema = z.object({
     .string()
     .min(1, 'Email é obrigatório')
     .email('Email inválido'),
-  role: z.enum(['admin', 'staff'], {
-    required_error: 'Função é obrigatória',
-  }),
+  role: z.enum(['admin', 'staff']),
 })
 
 export type CreateBusinessInput = z.infer<typeof createBusinessSchema>

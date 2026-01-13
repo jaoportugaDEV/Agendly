@@ -95,7 +95,7 @@ export function OnboardingWizard() {
             <Label htmlFor="countryCode">País *</Label>
             <Select
               value={selectedCountry}
-              onValueChange={(value) => setValue('countryCode', value as CountryCode, { shouldValidate: true })}
+              onValueChange={(value: string) => setValue('countryCode', value as CountryCode, { shouldValidate: true })}
               disabled={isLoading}
             >
               <SelectTrigger>
@@ -134,7 +134,7 @@ export function OnboardingWizard() {
             <Label htmlFor="businessType">Tipo de Negócio *</Label>
             <Select
               value={selectedBusinessType}
-              onValueChange={(value) => setValue('businessType', value, { shouldValidate: true })}
+              onValueChange={(value: string) => setValue('businessType', value, { shouldValidate: true })}
               disabled={isLoading}
             >
               <SelectTrigger>
