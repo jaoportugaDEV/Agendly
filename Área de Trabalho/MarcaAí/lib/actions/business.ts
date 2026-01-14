@@ -112,3 +112,124 @@ async function generateUniqueBusinessSlug(name: string): Promise<string> {
     counter++
   }
 }
+
+export async function getBusinessBySlug(slug: string) {
+  const { createPublicClient } = await import('@/lib/supabase/server')
+  const supabase = createPublicClient()
+
+  // Get business basic info
+  const { data: business, error: businessError } = await supabase
+    .from('businesses')
+    .select('id, name, slug, description, logo_url, timezone, currency')
+    .eq('slug', slug)
+    .eq('active', true)
+    .is('deleted_at', null)
+    .single()
+
+  if (businessError || !business) {
+    console.error('Error fetching business:', businessError)
+    return { success: false, error: 'Empresa não encontrada' }
+  }
+
+  // Get active services
+  const { data: services, error: servicesError } = await supabase
+    .from('services')
+    .select('id, name, description, duration_minutes, price, currency')
+    .eq('business_id', business.id)
+    .eq('active', true)
+    .is('deleted_at', null)
+    .order('name', { ascending: true })
+
+  if (servicesError) {
+    console.error('Error fetching services:', servicesError)
+    return { success: false, error: 'Erro ao buscar serviços' }
+  }
+
+  // Get active staff
+  const { data: members, error: membersError } = await supabase
+    .from('business_members')
+    .select(`
+      user_id,
+      users!inner(id, full_name, avatar_url)
+    `)
+    .eq('business_id', business.id)
+    .eq('active', true)
+
+  if (membersError) {
+    console.error('Error fetching staff:', membersError)
+    return { success: false, error: 'Erro ao buscar equipe' }
+  }
+
+  // Transform staff data
+  const staff = (members || []).map((m: any) => ({
+    id: m.users.id,
+    name: m.users.full_name,
+    avatar_url: m.users.avatar_url,
+  }))
+
+  return {
+    success: true,
+    data: {
+      id: business.id,
+      name: business.name,
+      slug: business.slug,
+      description: business.description,
+      logo_url: business.logo_url,
+      timezone: business.timezone,
+      currency: business.currency,
+      services: services || [],
+      staff,
+    },
+  }
+}
+
+/**
+ * Soft delete a business (sets deleted_at timestamp)
+ * Only the owner/admin can delete
+ */
+export async function deleteBusiness(businessId: string) {
+  console.log('🔵 deleteBusiness called for:', businessId)
+  const supabase = await createClient()
+  const user = await getUser()
+
+  if (!user) {
+    return { success: false, error: 'Não autenticado' }
+  }
+
+  // Verificar se o usuário é admin do business
+  const { data: membership } = await supabase
+    .from('business_members')
+    .select('role')
+    .eq('business_id', businessId)
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .single()
+
+  if (!membership || membership.role !== 'admin') {
+    return { success: false, error: 'Apenas administradores podem excluir a empresa' }
+  }
+
+  // Soft delete (set deleted_at)
+  const { error } = await supabase
+    .from('businesses')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', businessId)
+
+  if (error) {
+    console.error('❌ Error deleting business:', error)
+    return { success: false, error: 'Erro ao excluir empresa' }
+  }
+
+  console.log('✅ Business deleted successfully')
+  
+  // Buscar outra empresa do usuário para redirecionar
+  const businesses = await getUserBusinesses()
+  
+  revalidatePath('/', 'layout')
+  
+  if (businesses.length > 0) {
+    redirect(`/${businesses[0].id}`)
+  } else {
+    redirect('/onboarding')
+  }
+}

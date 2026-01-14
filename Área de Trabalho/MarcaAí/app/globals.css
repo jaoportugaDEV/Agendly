@@ -57,3 +57,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Booking widget embed styles */
+.booking-widget {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+@media (max-width: 640px) {
+  .booking-widget {
+    padding: 0.5rem;
+  }
+}

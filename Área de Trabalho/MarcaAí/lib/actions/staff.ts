@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createPublicClient } from '@/lib/supabase/server'
 import { inviteStaffSchema, updateStaffMemberSchema } from '@/lib/validations/staff'
 import { revalidatePath } from 'next/cache'
 
@@ -17,6 +17,10 @@ export async function getBusinessMembers(businessId: string) {
       role,
       active,
       joined_at,
+      absence_reason,
+      absence_start_date,
+      absence_end_date,
+      absence_notes,
       users (
         id,
         email,
@@ -67,20 +71,26 @@ export async function getStaffMembers(businessId: string) {
 }
 
 export async function inviteStaffMember(businessId: string, input: unknown) {
+  console.log('🔵 inviteStaffMember called for business:', businessId, 'input:', input)
   const supabase = await createClient()
 
   // Validar input
   const validation = inviteStaffSchema.safeParse(input)
   if (!validation.success) {
+    console.error('❌ Validation failed:', validation.error)
     return {
       success: false,
       error: validation.error.issues[0]?.message || 'Dados inválidos',
     }
   }
 
-  const { email, fullName, role } = validation.data
+  console.log('✅ Validation passed:', validation.data)
+  const { email, fullName, password, role } = validation.data
 
-  // Verificar se o usuário já existe
+  // Usar service role para verificações
+  const serviceSupabase = createPublicClient()
+
+  // Verificar se o usuário já existe na tabela users
   const { data: existingUser } = await supabase
     .from('users')
     .select('id')
@@ -88,6 +98,8 @@ export async function inviteStaffMember(businessId: string, input: unknown) {
     .single()
 
   if (existingUser) {
+    console.log('✅ User already exists in users table:', existingUser.id)
+    
     // Verificar se já é membro do negócio
     const { data: existingMember } = await supabase
       .from('business_members')
@@ -97,6 +109,7 @@ export async function inviteStaffMember(businessId: string, input: unknown) {
       .single()
 
     if (existingMember) {
+      console.log('❌ User is already a member')
       return { success: false, error: 'Usuário já é membro deste negócio' }
     }
 
@@ -111,19 +124,85 @@ export async function inviteStaffMember(businessId: string, input: unknown) {
       })
 
     if (memberError) {
-      console.error('Erro ao adicionar membro:', memberError)
+      console.error('❌ Erro ao adicionar membro:', memberError)
       return { success: false, error: 'Erro ao adicionar membro' }
     }
 
+    console.log('✅ Member added successfully')
     revalidatePath(`/dashboard/${businessId}/equipe`)
     return { success: true, message: 'Membro adicionado com sucesso' }
   }
 
-  // Usuário não existe - criar convite (por enquanto, criar usuário temporário)
-  // TODO: Implementar sistema de convites por email
-  return {
-    success: false,
-    error: 'Sistema de convites ainda não implementado. O usuário deve se cadastrar primeiro.',
+  // Usuário não existe na tabela users - verificar se existe no Auth
+  console.log('📝 User not in users table, checking auth...')
+  
+  try {
+    // Verificar se usuário existe no Auth
+    const { data: authUsersList } = await serviceSupabase.auth.admin.listUsers()
+    const existingAuthUser = authUsersList?.users?.find(u => u.email === email)
+
+    if (existingAuthUser) {
+      console.log('✅ User exists in auth but not in users table, deleting old auth user...')
+      
+      // Deletar o usuário antigo do Auth para poder recriar
+      const { error: deleteError } = await serviceSupabase.auth.admin.deleteUser(existingAuthUser.id)
+      
+      if (deleteError) {
+        console.error('❌ Error deleting old auth user:', deleteError)
+        return { success: false, error: 'Erro ao limpar usuário anterior. Tente novamente.' }
+      }
+      
+      console.log('✅ Old auth user deleted, will create new one')
+      // Aguardar um pouco para garantir que o delete foi processado
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+    
+    // Criar usuário no Supabase Auth (admin API) com senha
+    console.log('📝 Creating new auth user...')
+    const { data: authUser, error: authError } = await serviceSupabase.auth.admin.createUser({
+      email,
+      password, // Senha definida pelo admin
+      email_confirm: true, // Auto-confirmar email
+      user_metadata: {
+        full_name: fullName,
+      },
+    })
+
+    if (authError || !authUser.user) {
+      console.error('❌ Error creating auth user:', authError)
+      return { 
+        success: false, 
+        error: 'Erro ao criar usuário: ' + (authError?.message || 'Erro desconhecido')
+      }
+    }
+
+    console.log('✅ Auth user created:', authUser.user.id)
+
+    // A tabela users deve ser populada automaticamente por um trigger
+    // Aguardar um pouco para o trigger executar
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    // Adicionar como membro
+    const { error: memberError } = await supabase
+      .from('business_members')
+      .insert({
+        business_id: businessId,
+        user_id: authUser.user.id,
+        role,
+        active: true,
+      })
+
+    if (memberError) {
+      console.error('❌ Error adding member:', memberError)
+      return { success: false, error: 'Erro ao adicionar membro: ' + memberError.message }
+    }
+
+    console.log('✅ Member added successfully')
+    revalidatePath(`/dashboard/${businessId}/equipe`)
+    return { success: true, message: 'Funcionário adicionado com sucesso' }
+  } catch (error) {
+    console.error('❌ Unexpected error:', error)
+    return { success: false, error: 'Erro inesperado ao criar funcionário' }
   }
 }
 
@@ -195,41 +274,84 @@ export async function updateStaffMember(
 }
 
 export async function removeStaffMember(businessId: string, memberId: string) {
+  console.log('🔵 removeStaffMember called:', { businessId, memberId })
   const supabase = await createClient()
 
-  // Verificar se é o último admin
+  // Buscar informações do membro incluindo user_id e joined_at
   const { data: member } = await supabase
     .from('business_members')
-    .select('role, active')
+    .select('role, active, user_id, joined_at')
     .eq('id', memberId)
     .single()
 
-  if (member?.role === 'admin' && member?.active === true) {
-    const { data: admins, count } = await supabase
+  if (!member) {
+    return { success: false, error: 'Membro não encontrado' }
+  }
+
+  // Verificar se é o fundador (primeiro admin)
+  if (member.role === 'admin') {
+    const { data: firstAdmin } = await supabase
       .from('business_members')
-      .select('id', { count: 'exact' })
+      .select('id, user_id')
       .eq('business_id', businessId)
       .eq('role', 'admin')
-      .eq('active', true)
+      .order('joined_at', { ascending: true })
+      .limit(1)
+      .single()
 
-    if (count === 1) {
+    if (firstAdmin && firstAdmin.user_id === member.user_id) {
       return {
         success: false,
-        error: 'Não é possível remover o último administrador',
+        error: 'Não é possível remover o administrador fundador da empresa',
+      }
+    }
+
+    // Verificar se é o último admin
+    if (member.active === true) {
+      const { data: admins, count } = await supabase
+        .from('business_members')
+        .select('id', { count: 'exact' })
+        .eq('business_id', businessId)
+        .eq('role', 'admin')
+        .eq('active', true)
+
+      if (count === 1) {
+        return {
+          success: false,
+          error: 'Não é possível remover o último administrador ativo',
+        }
       }
     }
   }
 
-  // Remover membro
-  const { error } = await supabase
+  // Remover membro do banco
+  const { error: memberError } = await supabase
     .from('business_members')
     .delete()
     .eq('id', memberId)
     .eq('business_id', businessId)
 
-  if (error) {
-    console.error('Erro ao remover membro:', error)
+  if (memberError) {
+    console.error('❌ Erro ao remover membro:', memberError)
     return { success: false, error: 'Erro ao remover membro' }
+  }
+
+  console.log('✅ Member removed from business_members')
+
+  // Deletar usuário do Supabase Auth (usando service role)
+  try {
+    const serviceSupabase = createPublicClient()
+    const { error: authError } = await serviceSupabase.auth.admin.deleteUser(member.user_id)
+
+    if (authError) {
+      console.error('⚠️ Warning: Could not delete auth user:', authError)
+      // Não falhar a operação se não conseguir deletar do auth
+    } else {
+      console.log('✅ User deleted from auth')
+    }
+  } catch (error) {
+    console.error('⚠️ Error deleting auth user:', error)
+    // Continuar mesmo se falhar
   }
 
   revalidatePath(`/dashboard/${businessId}/equipe`)
@@ -242,4 +364,76 @@ export async function toggleStaffStatus(
   active: boolean
 ) {
   return updateStaffMember(businessId, memberId, { active })
+}
+
+/**
+ * Desativa um funcionário com motivo e período de ausência
+ */
+export async function deactivateStaffMember(
+  businessId: string,
+  memberId: string,
+  absenceData: {
+    reason: string
+    startDate: string
+    endDate: string | null
+    notes: string | null
+  }
+) {
+  console.log('🔵 deactivateStaffMember called:', { businessId, memberId, absenceData })
+  const supabase = await createClient()
+
+  // Atualizar membro com dados de ausência
+  const { error } = await supabase
+    .from('business_members')
+    .update({
+      active: false,
+      absence_reason: absenceData.reason,
+      absence_start_date: absenceData.startDate,
+      absence_end_date: absenceData.endDate,
+      absence_notes: absenceData.notes,
+    })
+    .eq('id', memberId)
+    .eq('business_id', businessId)
+
+  if (error) {
+    console.error('❌ Erro ao desativar membro:', error)
+    return { success: false, error: 'Erro ao desativar funcionário' }
+  }
+
+  console.log('✅ Member deactivated with absence data')
+  revalidatePath(`/dashboard/${businessId}/equipe`)
+  return { success: true }
+}
+
+/**
+ * Reativa um funcionário e limpa dados de ausência
+ */
+export async function reactivateStaffMember(
+  businessId: string,
+  memberId: string
+) {
+  console.log('🔵 reactivateStaffMember called:', { businessId, memberId })
+  const supabase = await createClient()
+
+  // Reativar e limpar dados de ausência
+  const { error } = await supabase
+    .from('business_members')
+    .update({
+      active: true,
+      absence_reason: null,
+      absence_start_date: null,
+      absence_end_date: null,
+      absence_notes: null,
+    })
+    .eq('id', memberId)
+    .eq('business_id', businessId)
+
+  if (error) {
+    console.error('❌ Erro ao reativar membro:', error)
+    return { success: false, error: 'Erro ao reativar funcionário' }
+  }
+
+  console.log('✅ Member reactivated')
+  revalidatePath(`/dashboard/${businessId}/equipe`)
+  return { success: true }
 }

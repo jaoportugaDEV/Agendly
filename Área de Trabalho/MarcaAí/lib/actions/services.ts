@@ -42,17 +42,20 @@ export async function getServiceById(serviceId: string) {
 }
 
 export async function createService(businessId: string, input: unknown) {
+  console.log('🔵 createService called with:', { businessId, input })
   const supabase = await createClient()
 
   // Validar input
   const validation = createServiceSchema.safeParse(input)
   if (!validation.success) {
+    console.error('❌ Validation failed:', validation.error)
     return {
       success: false,
       error: validation.error.issues[0]?.message || 'Dados inválidos',
     }
   }
 
+  console.log('✅ Validation passed:', validation.data)
   const { name, description, durationMinutes, price } = validation.data
 
   // Buscar moeda do negócio
@@ -63,29 +66,36 @@ export async function createService(businessId: string, input: unknown) {
     .single()
 
   if (!business) {
+    console.error('❌ Business not found:', businessId)
     return { success: false, error: 'Negócio não encontrado' }
   }
 
+  console.log('✅ Business found, currency:', business.currency)
+
   // Criar serviço
+  const insertData = {
+    business_id: businessId,
+    name,
+    description,
+    duration_minutes: durationMinutes,
+    price,
+    currency: business.currency,
+    active: true,
+  }
+  console.log('📝 Inserting service:', insertData)
+
   const { data, error } = await supabase
     .from('services')
-    .insert({
-      business_id: businessId,
-      name,
-      description,
-      duration_minutes: durationMinutes,
-      price,
-      currency: business.currency,
-      active: true,
-    })
+    .insert(insertData)
     .select()
     .single()
 
   if (error) {
-    console.error('Erro ao criar serviço:', error)
+    console.error('❌ Erro ao criar serviço:', error)
     return { success: false, error: 'Erro ao criar serviço' }
   }
 
+  console.log('✅ Service created successfully:', data)
   revalidatePath('/dashboard/services')
   return { success: true, data }
 }

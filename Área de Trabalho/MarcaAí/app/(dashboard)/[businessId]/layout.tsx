@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getUser } from '@/lib/actions/auth'
+import { getUser, getUserMembership } from '@/lib/actions/auth'
 import { getUserBusinesses } from '@/lib/actions/business'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { MobileSidebar } from '@/components/dashboard/mobile-sidebar'
@@ -40,11 +40,15 @@ export default async function BusinessLayout({
     avatarUrl: user.user_metadata?.avatar_url,
   }
 
+  // Get user membership to determine role
+  const membership = await getUserMembership()
+  const userRole = membership?.role || 'admin'
+
   return (
     <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-card">
-        <Sidebar businessId={params.businessId} />
+        <Sidebar businessId={params.businessId} userRole={userRole} />
       </div>
 
       {/* Main Content */}
@@ -52,7 +56,7 @@ export default async function BusinessLayout({
         {/* Header */}
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center gap-4 px-4">
-            <MobileSidebar businessId={params.businessId} />
+            <MobileSidebar businessId={params.businessId} userRole={userRole} />
             
             <div className="flex-1 flex items-center gap-4">
               <div className="max-w-[200px]">

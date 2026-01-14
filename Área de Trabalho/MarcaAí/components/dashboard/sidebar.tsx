@@ -9,15 +9,18 @@ import {
   Scissors, 
   UserCog, 
   Settings,
-  LayoutDashboard 
+  LayoutDashboard,
+  Globe
 } from 'lucide-react'
 
 interface SidebarProps {
   businessId: string
   className?: string
+  userRole?: 'admin' | 'staff' // Novo: role do usuário
 }
 
-const menuItems = [
+// Menu completo para admins
+const adminMenuItems = [
   {
     title: 'Dashboard',
     href: '',
@@ -44,14 +47,31 @@ const menuItems = [
     icon: UserCog,
   },
   {
+    title: 'Site Público',
+    href: '/site-publico',
+    icon: Globe,
+  },
+  {
     title: 'Configurações',
     href: '/configuracoes',
     icon: Settings,
   },
 ]
 
-export function Sidebar({ businessId, className }: SidebarProps) {
+// Menu simplificado para staff
+const staffMenuItems = [
+  {
+    title: 'Minha Agenda',
+    href: '/minha-agenda',
+    icon: Calendar,
+  },
+]
+
+export function Sidebar({ businessId, className, userRole = 'admin' }: SidebarProps) {
   const pathname = usePathname()
+  
+  // Selecionar menu baseado no role
+  const menuItems = userRole === 'staff' ? staffMenuItems : adminMenuItems
 
   return (
     <aside className={cn('flex flex-col h-full', className)}>

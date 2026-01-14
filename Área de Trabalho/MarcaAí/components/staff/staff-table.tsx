@@ -27,10 +27,12 @@ import {
   ToggleRight,
   Trash2,
   Clock,
+  Crown,
 } from 'lucide-react'
 import { RemoveStaffDialog } from './remove-staff-dialog'
 import { ScheduleDialog } from './schedule-dialog'
-import { toggleStaffStatus } from '@/lib/actions/staff'
+import { DeactivateStaffDialog } from './deactivate-staff-dialog'
+import { reactivateStaffMember } from '@/lib/actions/staff'
 import { useToast } from '@/components/ui/use-toast'
 
 interface StaffMember {
@@ -39,13 +41,17 @@ interface StaffMember {
   role: 'admin' | 'staff'
   active: boolean
   joined_at: string
+  absence_reason: string | null
+  absence_start_date: string | null
+  absence_end_date: string | null
+  absence_notes: string | null
   users: {
     id: string
     email: string
     full_name: string | null
     avatar_url: string | null
     phone: string | null
-  }
+  } | null
 }
 
 interface StaffTableProps {
@@ -58,16 +64,24 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
   const { toast } = useToast()
   const [removingMember, setRemovingMember] = useState<StaffMember | null>(null)
   const [schedulingMember, setSchedulingMember] = useState<StaffMember | null>(null)
+  const [deactivatingMember, setDeactivatingMember] = useState<StaffMember | null>(null)
 
-  const handleToggleStatus = async (member: StaffMember) => {
-    const result = await toggleStaffStatus(businessId, member.id, !member.active)
+  // Identificar o fundador (primeiro admin)
+  const founder = members
+    .filter(m => m.role === 'admin')
+    .sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime())[0]
+
+  const isFounder = (member: StaffMember) => {
+    return founder && member.user_id === founder.user_id
+  }
+
+  const handleReactivate = async (member: StaffMember) => {
+    const result = await reactivateStaffMember(businessId, member.id)
 
     if (result.success) {
       toast({
-        title: member.active ? 'Funcionário desativado' : 'Funcionário ativado',
-        description: `${member.users.full_name || member.users.email} foi ${
-          member.active ? 'desativado' : 'ativado'
-        } com sucesso.`,
+        title: 'Funcionário reativado',
+        description: `${member.users?.full_name || member.users?.email || 'Funcionário'} foi reativado com sucesso.`,
       })
       router.refresh()
     } else {
@@ -109,26 +123,29 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
     )
   }
 
+  // Filtrar membros sem dados de usuário (usuários deletados)
+  const validMembers = members.filter(m => m.users !== null)
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {members.map((member) => (
+        {validMembers.map((member) => (
           <Card key={member.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarImage src={member.users.avatar_url || undefined} />
+                    <AvatarImage src={member.users?.avatar_url || undefined} />
                     <AvatarFallback>
-                      {getInitials(member.users.full_name, member.users.email)}
+                      {getInitials(member.users?.full_name, member.users?.email || 'U')}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
                     <CardTitle className="text-base">
-                      {member.users.full_name || 'Sem nome'}
+                      {member.users?.full_name || 'Sem nome'}
                     </CardTitle>
                     <CardDescription className="text-sm">
-                      {member.users.email}
+                      {member.users?.email || 'Email não disponível'}
                     </CardDescription>
                   </div>
                 </div>
@@ -144,35 +161,43 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
                       Horários de Trabalho
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => handleToggleStatus(member)}>
-                      {member.active ? (
-                        <>
-                          <ToggleLeft className="mr-2 h-4 w-4" />
-                          Desativar
-                        </>
-                      ) : (
-                        <>
-                          <ToggleRight className="mr-2 h-4 w-4" />
-                          Ativar
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => setRemovingMember(member)}
-                      className="text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Remover
-                    </DropdownMenuItem>
+                    {member.active ? (
+                      <DropdownMenuItem onClick={() => setDeactivatingMember(member)}>
+                        <ToggleLeft className="mr-2 h-4 w-4" />
+                        Marcar Ausência
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem onClick={() => handleReactivate(member)}>
+                        <ToggleRight className="mr-2 h-4 w-4" />
+                        Reativar Funcionário
+                      </DropdownMenuItem>
+                    )}
+                    {!isFounder(member) && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setRemovingMember(member)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Remover
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-2 w-full">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isFounder(member) && (
+                      <Badge variant="default" className="gap-1 bg-amber-500 hover:bg-amber-600">
+                        <Crown className="h-3 w-3" />
+                        Fundador
+                      </Badge>
+                    )}
                     {member.role === 'admin' ? (
                       <Badge variant="default" className="gap-1">
                         <Shield className="h-3 w-3" />
@@ -188,8 +213,36 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
                       {member.active ? 'Ativo' : 'Inativo'}
                     </Badge>
                   </div>
+                  
+                  {/* Informações de ausência */}
+                  {!member.active && member.absence_reason && (
+                    <div className="mt-3 p-2 bg-muted rounded-md border text-xs space-y-1">
+                      <div className="font-medium text-foreground">
+                        {member.absence_reason === 'ferias' && '🏖️ Férias'}
+                        {member.absence_reason === 'folga' && '☕ Folga / Descanso'}
+                        {member.absence_reason === 'doenca' && '🏥 Doença / Atestado'}
+                        {member.absence_reason === 'outro' && '📅 Ausência'}
+                      </div>
+                      {member.absence_start_date && (
+                        <div className="text-muted-foreground">
+                          Desde: {formatDate(member.absence_start_date)}
+                        </div>
+                      )}
+                      {member.absence_end_date && (
+                        <div className="text-muted-foreground">
+                          Retorno: {formatDate(member.absence_end_date)}
+                        </div>
+                      )}
+                      {member.absence_notes && (
+                        <div className="text-muted-foreground italic mt-1">
+                          "{member.absence_notes}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="text-xs text-muted-foreground">
-                    Desde {formatDate(member.joined_at)}
+                    Membro desde {formatDate(member.joined_at)}
                   </div>
                 </div>
               </div>
@@ -213,7 +266,16 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
           onOpenChange={(open) => !open && setSchedulingMember(null)}
           businessId={businessId}
           staffId={schedulingMember.user_id}
-          staffName={schedulingMember.users.full_name || schedulingMember.users.email}
+          staffName={schedulingMember.users?.full_name || schedulingMember.users?.email || 'Funcionário'}
+        />
+      )}
+
+      {deactivatingMember && (
+        <DeactivateStaffDialog
+          open={!!deactivatingMember}
+          onOpenChange={(open) => !open && setDeactivatingMember(null)}
+          businessId={businessId}
+          member={deactivatingMember}
         />
       )}
     </>

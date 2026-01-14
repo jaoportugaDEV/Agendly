@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { Database } from '@/types/database.types'
 
 export async function createClient() {
@@ -31,6 +32,24 @@ export async function createClient() {
             // user sessions.
           }
         },
+      },
+    }
+  )
+}
+
+/**
+ * Create a public Supabase client without authentication
+ * Used for public booking operations
+ * Uses SERVICE_ROLE_KEY to bypass RLS for customer creation
+ */
+export function createPublicClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
       },
     }
   )

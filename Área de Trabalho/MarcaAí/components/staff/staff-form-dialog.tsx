@@ -37,6 +37,7 @@ export function StaffFormDialog({ businessId, trigger }: StaffFormDialogProps) {
   const [formData, setFormData] = useState({
     email: '',
     fullName: '',
+    password: '',
     role: 'staff' as 'admin' | 'staff',
   })
 
@@ -53,7 +54,7 @@ export function StaffFormDialog({ businessId, trigger }: StaffFormDialogProps) {
           description: 'O funcionário foi adicionado à equipe com sucesso.',
         })
         setOpen(false)
-        setFormData({ email: '', fullName: '', role: 'staff' })
+        setFormData({ email: '', fullName: '', password: '', role: 'staff' })
         router.refresh()
       } else {
         toast({
@@ -81,7 +82,7 @@ export function StaffFormDialog({ businessId, trigger }: StaffFormDialogProps) {
           <DialogHeader>
             <DialogTitle>Adicionar Funcionário</DialogTitle>
             <DialogDescription>
-              Adicione um novo membro à sua equipe. O usuário deve estar cadastrado no sistema.
+              Adicione um novo membro à sua equipe. Defina uma senha de acesso para o funcionário.
             </DialogDescription>
           </DialogHeader>
 
@@ -111,6 +112,24 @@ export function StaffFormDialog({ businessId, trigger }: StaffFormDialogProps) {
                 }
                 required
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="password">Senha *</Label>
+              <Input
+                id="password"
+                type="text"
+                placeholder="Senha de acesso (mínimo 6 caracteres)"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                required
+                minLength={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                Esta senha será usada pelo funcionário para fazer login no sistema.
+              </p>
             </div>
 
             <div className="grid gap-2">

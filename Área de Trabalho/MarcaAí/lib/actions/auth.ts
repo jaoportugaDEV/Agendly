@@ -19,6 +19,28 @@ export async function login(data: LoginInput) {
     return { error: error.message }
   }
 
+  // Get user membership to redirect appropriately
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (user) {
+    const { data: membership } = await supabase
+      .from('business_members')
+      .select('business_id, role')
+      .eq('user_id', user.id)
+      .eq('active', true)
+      .single()
+
+    if (membership) {
+      revalidatePath('/', 'layout')
+      // Staff sees their own schedule, admin sees full dashboard
+      if (membership.role === 'staff') {
+        redirect(`/${membership.business_id}/minha-agenda`)
+      } else {
+        redirect(`/${membership.business_id}/agenda`)
+      }
+    }
+  }
+
   revalidatePath('/', 'layout')
   redirect('/dashboard')
 }
@@ -58,4 +80,26 @@ export async function getUser() {
     data: { user },
   } = await supabase.auth.getUser()
   return user
+}
+
+/**
+ * Get user's business membership (role and business_id)
+ * Returns the first active membership found
+ */
+export async function getUserMembership() {
+  const supabase = await createClient()
+  const user = await getUser()
+  
+  if (!user) {
+    return null
+  }
+
+  const { data: membership } = await supabase
+    .from('business_members')
+    .select('business_id, role, active')
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .single()
+
+  return membership
 }

@@ -13,6 +13,8 @@ export type AppointmentStatus =
   | 'completed'
   | 'no_show'
 
+export type AppointmentSource = 'internal' | 'public'
+
 export type DayOfWeek =
   | 'monday'
   | 'tuesday'
@@ -87,4 +89,39 @@ export const STATUS_COLORS: Record<AppointmentStatus, string> = {
   cancelled: 'bg-red-500',
   completed: 'bg-green-500',
   no_show: 'bg-gray-500',
+}
+
+// Time slot for availability
+export interface TimeSlot {
+  time: string // HH:mm format
+  datetime: string // ISO datetime
+  available: boolean
+}
+
+// Public business data
+export interface PublicBusinessData {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  logo_url?: string
+  timezone: string
+  currency: string
+  services: PublicServiceData[]
+  staff: PublicStaffData[]
+}
+
+export interface PublicServiceData {
+  id: string
+  name: string
+  description?: string
+  duration_minutes: number
+  price: number
+  currency: string
+}
+
+export interface PublicStaffData {
+  id: string
+  name: string
+  avatar_url?: string
 }

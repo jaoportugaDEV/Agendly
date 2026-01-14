@@ -24,7 +24,7 @@ interface RemoveStaffDialogProps {
     users: {
       full_name: string | null
       email: string
-    }
+    } | null
   }
 }
 
@@ -48,7 +48,7 @@ export function RemoveStaffDialog({
         toast({
           title: 'Funcionário removido',
           description: `${
-            member.users.full_name || member.users.email
+            member.users?.full_name || member.users?.email || 'Funcionário'
           } foi removido da equipe.`,
         })
         onOpenChange(false)
@@ -83,7 +83,7 @@ export function RemoveStaffDialog({
           </div>
           <DialogDescription>
             Tem certeza que deseja remover{' '}
-            <strong>{member.users.full_name || member.users.email}</strong> da equipe?
+            <strong>{member.users?.full_name || member.users?.email || 'este funcionário'}</strong> da equipe?
             Esta ação não pode ser desfeita.
           </DialogDescription>
         </DialogHeader>
