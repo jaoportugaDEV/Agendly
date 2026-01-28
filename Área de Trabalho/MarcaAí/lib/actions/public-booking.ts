@@ -192,7 +192,7 @@ export async function createPublicAppointment(
       startDate.getTime() + service.duration_minutes * 60000
     )
 
-    // 7. Create appointment with source='public'
+    // 7. Create appointment with source='public' and status='confirmed'
     console.log('📝 Creating appointment with data:', {
       business_id: businessId,
       staff_id: staffId,
@@ -200,7 +200,7 @@ export async function createPublicAppointment(
       service_id: serviceId,
       start_time: startTime,
       end_time: endDate.toISOString(),
-      status: 'pending',
+      status: 'confirmed',
       price: finalPrice,
       currency: service.currency,
       source: 'public',
@@ -215,7 +215,7 @@ export async function createPublicAppointment(
         service_id: serviceId,
         start_time: startTime,
         end_time: endDate.toISOString(),
-        status: 'pending',
+        status: 'confirmed',
         price: finalPrice,
         currency: service.currency,
         source: 'public',

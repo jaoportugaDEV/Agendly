@@ -218,7 +218,7 @@ export default async function AppointmentDetailPage({
                       minHours={canCancelResult.minHours || 24}
                     />
                     <Button variant="outline" asChild>
-                      <Link href={`/agendar/${appointment.business?.id?.slice(0, 8)}?remarcar=${appointment.id}`}>
+                      <Link href={`/agendar/${appointment.business?.slug}?remarcar=${appointment.id}`}>
                         Remarcar
                       </Link>
                     </Button>

@@ -86,6 +86,13 @@ export function DateTimePicker({
               date: selectedDate,
             })
 
+      console.log('📊 Slots recebidos:', {
+        success: result.success,
+        totalSlots: result.data?.length,
+        lastSlot: result.data?.[result.data.length - 1]?.time,
+        error: result.error
+      })
+
       if (result.success && result.data) {
         setAvailableSlots(result.data)
       } else {

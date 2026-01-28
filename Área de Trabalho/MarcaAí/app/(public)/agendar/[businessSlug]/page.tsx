@@ -2,10 +2,11 @@ import { getBusinessBySlug } from '@/lib/actions/business'
 import { PublicBookingFlow } from '@/components/booking/public-booking-flow'
 import { notFound } from 'next/navigation'
 import { Card } from '@/components/ui/card'
+import { getClientAppointmentById } from '@/lib/actions/client-appointments'
 
 interface PageProps {
   params: { businessSlug: string }
-  searchParams?: { embed?: string; service?: string }
+  searchParams?: { embed?: string; service?: string; remarcar?: string }
 }
 
 export default async function PublicBookingPage({
@@ -15,6 +16,20 @@ export default async function PublicBookingPage({
   const { businessSlug } = params
   const isEmbed = searchParams?.embed === 'true'
   const preselectedServiceId = searchParams?.service || null
+  const remarcarId = searchParams?.remarcar || null
+
+  // Se for remarcação, buscar dados do agendamento original
+  let rescheduleData = null
+  if (remarcarId) {
+    const appointmentResult = await getClientAppointmentById(remarcarId)
+    if (appointmentResult.success && appointmentResult.data) {
+      rescheduleData = {
+        appointmentId: remarcarId,
+        serviceId: appointmentResult.data.service_id,
+        staffId: appointmentResult.data.staff_id,
+      }
+    }
+  }
 
   // Get business data
   const result = await getBusinessBySlug(businessSlug)
@@ -57,6 +72,7 @@ export default async function PublicBookingPage({
       <PublicBookingFlow 
         business={business} 
         preselectedServiceId={preselectedServiceId}
+        rescheduleData={rescheduleData}
       />
     </div>
   )

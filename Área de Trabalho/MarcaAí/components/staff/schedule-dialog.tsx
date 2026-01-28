@@ -78,8 +78,9 @@ export function ScheduleDialog({
       result.data.forEach((item: any) => {
         newSchedule[item.day_of_week as DayOfWeek] = {
           enabled: true,
-          startTime: item.start_time,
-          endTime: item.end_time,
+          // Remove segundos do formato TIME do PostgreSQL (HH:MM:SS -> HH:MM)
+          startTime: item.start_time.substring(0, 5),
+          endTime: item.end_time.substring(0, 5),
         }
       })
       setSchedule(newSchedule)

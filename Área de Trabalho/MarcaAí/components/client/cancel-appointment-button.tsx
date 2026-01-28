@@ -21,9 +21,14 @@ import { useToast } from '@/hooks/use-toast'
 interface CancelAppointmentButtonProps {
   appointmentId: string
   minHours: number
+  size?: 'sm' | 'default'
 }
 
-export function CancelAppointmentButton({ appointmentId, minHours }: CancelAppointmentButtonProps) {
+export function CancelAppointmentButton({ 
+  appointmentId, 
+  minHours,
+  size = 'default' 
+}: CancelAppointmentButtonProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -40,7 +45,6 @@ export function CancelAppointmentButton({ appointmentId, minHours }: CancelAppoi
         description: result.message || 'Seu agendamento foi cancelado com sucesso.',
       })
       setOpen(false)
-      router.push('/meus-agendamentos')
       router.refresh()
     } else {
       toast({
@@ -55,9 +59,9 @@ export function CancelAppointmentButton({ appointmentId, minHours }: CancelAppoi
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="destructive">
+        <Button variant="destructive" size={size}>
           <X className="h-4 w-4 mr-2" />
-          Cancelar Agendamento
+          {size === 'sm' ? 'Cancelar' : 'Cancelar Agendamento'}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

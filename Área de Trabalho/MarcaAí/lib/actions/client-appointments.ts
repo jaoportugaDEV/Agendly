@@ -24,7 +24,7 @@ export async function getClientAppointments(filters?: {
         *,
         service:services(id, name, duration_minutes),
         staff:users!appointments_staff_id_fkey(id, full_name),
-        business:businesses(id, name, phone, email, address),
+        business:businesses(id, name, slug, phone, email, address),
         review:appointment_reviews(id, rating, comment)
       `)
       .eq('customer_id', auth.customerId)
@@ -72,7 +72,7 @@ export async function getClientAppointmentById(appointmentId: string) {
         *,
         service:services(id, name, duration_minutes, description),
         staff:users!appointments_staff_id_fkey(id, full_name, email),
-        business:businesses(id, name, phone, email, address, city),
+        business:businesses(id, name, slug, phone, email, address, city),
         review:appointment_reviews(id, rating, comment)
       `)
       .eq('id', appointmentId)

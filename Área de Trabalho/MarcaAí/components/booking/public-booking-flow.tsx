@@ -10,23 +10,31 @@ import { DateTimePicker } from './date-time-picker'
 import { CustomerForm } from './customer-form'
 import { BookingSummary } from './booking-summary'
 import { BookingConfirmation } from './booking-confirmation'
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, Info } from 'lucide-react'
 import type { PublicBusinessData } from '@/types/shared'
 import { createPublicAppointment, findAvailableStaff } from '@/lib/actions/public-booking'
+import { cancelClientAppointment } from '@/lib/actions/client-appointments'
 import { useToast } from '@/hooks/use-toast'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface PublicBookingFlowProps {
   business: PublicBusinessData
   preselectedServiceId?: string | null
+  rescheduleData?: {
+    appointmentId: string
+    serviceId: string
+    staffId: string
+  } | null
 }
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 
-export function PublicBookingFlow({ business, preselectedServiceId }: PublicBookingFlowProps) {
+export function PublicBookingFlow({ business, preselectedServiceId, rescheduleData }: PublicBookingFlowProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
+  const [isRescheduling, setIsRescheduling] = useState(false)
 
   // Booking data
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
@@ -39,12 +47,22 @@ export function PublicBookingFlow({ business, preselectedServiceId }: PublicBook
     notes: '',
   })
 
-  // Auto-select service if provided via URL
+  // Auto-select service and staff for rescheduling
   useEffect(() => {
-    if (preselectedServiceId && business.services.some(s => s.id === preselectedServiceId)) {
+    if (rescheduleData) {
+      setIsRescheduling(true)
+      if (business.services.some(s => s.id === rescheduleData.serviceId)) {
+        setSelectedServiceId(rescheduleData.serviceId)
+      }
+      if (business.staff.some(s => s.id === rescheduleData.staffId)) {
+        setSelectedStaffId(rescheduleData.staffId)
+      }
+      // Skip to step 3 (date/time selection)
+      setCurrentStep(3)
+    } else if (preselectedServiceId && business.services.some(s => s.id === preselectedServiceId)) {
       setSelectedServiceId(preselectedServiceId)
     }
-  }, [preselectedServiceId, business.services])
+  }, [preselectedServiceId, rescheduleData, business.services, business.staff])
 
   const canProceed = () => {
     switch (currentStep) {
@@ -143,6 +161,13 @@ export function PublicBookingFlow({ business, preselectedServiceId }: PublicBook
 
       if (result.success && result.data?.appointmentId) {
         console.log('✅ Appointment created successfully!')
+        
+        // Se for remarcação, cancelar o agendamento antigo
+        if (isRescheduling && rescheduleData?.appointmentId) {
+          console.log('🔄 Cancelling old appointment...')
+          await cancelClientAppointment(rescheduleData.appointmentId)
+        }
+        
         // Redirecionar para página de sucesso com informações
         router.push(`/agendar/${business.slug}/sucesso?id=${result.data.appointmentId}`)
       } else {
@@ -207,9 +232,22 @@ export function PublicBookingFlow({ business, preselectedServiceId }: PublicBook
     <div className="max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Agendar Horário</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          {isRescheduling ? 'Remarcar Agendamento' : 'Agendar Horário'}
+        </h1>
         <p className="text-muted-foreground">{business.name}</p>
       </div>
+
+      {/* Rescheduling Alert */}
+      {isRescheduling && (
+        <Alert className="mb-6">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Você está remarcando um agendamento. Selecione uma nova data e horário.
+            O agendamento anterior será cancelado automaticamente.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Progress Steps */}
       {currentStep < 6 && (

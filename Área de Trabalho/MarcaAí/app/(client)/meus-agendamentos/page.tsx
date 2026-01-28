@@ -10,6 +10,7 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import Link from 'next/link'
 import { logoutClient } from '@/lib/actions/client-auth'
+import { AppointmentActions } from '@/components/client/appointment-actions'
 
 async function handleLogout() {
   'use server'
@@ -33,6 +34,14 @@ export default async function ClientDashboardPage() {
   const profile = profileResult.success ? profileResult.data : null
   const futureAppointments = futureResult.success ? futureResult.data : []
   const pastAppointments = pastResult.success ? pastResult.data : []
+
+  // Calcular se pode cancelar cada agendamento
+  const minHours = parseInt(process.env.APPOINTMENT_CANCEL_HOURS_BEFORE || '5')
+  const futureWithCancel = futureAppointments.map((apt: any) => {
+    const hoursUntil = (new Date(apt.start_time).getTime() - new Date().getTime()) / (1000 * 60 * 60)
+    const canCancel = apt.status !== 'cancelled' && hoursUntil >= minHours
+    return { ...apt, canCancel, hoursUntil, minHours }
+  })
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,7 +78,7 @@ export default async function ClientDashboardPage() {
           </TabsList>
 
           <TabsContent value="future" className="mt-6 space-y-4">
-            {futureAppointments.length === 0 ? (
+            {futureWithCancel.length === 0 ? (
               <Card>
                 <CardContent className="py-10 text-center">
                   <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -79,7 +88,7 @@ export default async function ClientDashboardPage() {
                 </CardContent>
               </Card>
             ) : (
-              futureAppointments.map((apt: any) => (
+              futureWithCancel.map((apt: any) => (
                 <Card key={apt.id}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
@@ -122,12 +131,21 @@ export default async function ClientDashboardPage() {
                       </div>
                     )}
                     
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 pt-2 flex-col">
                       <Button asChild variant="outline" size="sm">
                         <Link href={`/meus-agendamentos/${apt.id}`}>
                           Ver Detalhes
                         </Link>
                       </Button>
+                      
+                      <AppointmentActions
+                        appointmentId={apt.id}
+                        businessSlug={apt.business?.slug}
+                        canCancel={apt.canCancel}
+                        minHours={apt.minHours}
+                        hoursUntil={apt.hoursUntil}
+                        status={apt.status}
+                      />
                     </div>
                   </CardContent>
                 </Card>

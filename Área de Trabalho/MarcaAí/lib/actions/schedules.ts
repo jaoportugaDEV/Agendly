@@ -173,32 +173,36 @@ export async function bulkCreateStaffSchedules(
   }
 
   // Deletar horários existentes (soft delete)
-  await supabase
+  const { error: deleteError } = await supabase
     .from('staff_schedules')
     .update({ active: false })
     .eq('business_id', businessId)
     .eq('staff_id', staffId)
 
+  if (deleteError) {
+    console.error('Erro ao desativar horários antigos:', deleteError)
+    return { success: false, error: 'Erro ao atualizar horários' }
+  }
+
   // Criar novos horários
+  const insertData = validatedSchedules.map((s) => ({
+    business_id: businessId,
+    staff_id: s.staffId,
+    day_of_week: s.dayOfWeek,
+    start_time: s.startTime,
+    end_time: s.endTime,
+    active: true,
+  }))
+
   const { data, error } = await supabase
     .from('staff_schedules')
-    .insert(
-      validatedSchedules.map((s) => ({
-        business_id: businessId,
-        staff_id: s.staffId,
-        day_of_week: s.dayOfWeek,
-        start_time: s.startTime,
-        end_time: s.endTime,
-        active: true,
-      }))
-    )
+    .insert(insertData)
     .select()
 
   if (error) {
     console.error('Erro ao criar horários:', error)
-    return { success: false, error: 'Erro ao criar horários' }
+    return { success: false, error: `Erro ao criar horários: ${error.message}` }
   }
-
   revalidatePath(`/dashboard/${businessId}/equipe`)
   return { success: true, data }
 }

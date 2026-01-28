@@ -66,6 +66,14 @@ export async function getAvailableSlots(params: {
 
     const businessHours = businessHoursResult.data
 
+    console.log('🔍 DEBUG - Business Hours:', {
+      opening: businessHours.opening,
+      closing: businessHours.closing,
+      isClosed: businessHours.isClosed,
+      dayOfWeek,
+      date
+    })
+
     // If business is closed on this day, return empty slots
     if (businessHours.isClosed) {
       return { success: true, data: [] }
@@ -97,6 +105,16 @@ export async function getAvailableSlots(params: {
     const effectiveStartMinutes = Math.max(businessOpenMinutes, staffStartMinutes)
     const effectiveEndMinutes = Math.min(businessCloseMinutes, staffEndMinutes)
     
+    console.log('🔍 DEBUG - Horários calculados:', {
+      businessOpen: businessHours.opening,
+      businessClose: businessHours.closing,
+      staffStart: schedule.start_time,
+      staffEnd: schedule.end_time,
+      effectiveStartMinutes,
+      effectiveEndMinutes,
+      serviceDuration
+    })
+    
     // If no overlap, return empty slots
     if (effectiveStartMinutes >= effectiveEndMinutes) {
       return { success: true, data: [] }
@@ -104,6 +122,11 @@ export async function getAvailableSlots(params: {
     
     const workStartTime = `${Math.floor(effectiveStartMinutes / 60).toString().padStart(2, '0')}:${(effectiveStartMinutes % 60).toString().padStart(2, '0')}:00`
     const workEndTime = `${Math.floor(effectiveEndMinutes / 60).toString().padStart(2, '0')}:${(effectiveEndMinutes % 60).toString().padStart(2, '0')}:00`
+    
+    console.log('🔍 DEBUG - Horário de trabalho final:', {
+      workStartTime,
+      workEndTime
+    })
 
     // 6. Get existing appointments for this staff on this date
     const startOfDay = `${date}T00:00:00`
@@ -141,28 +164,24 @@ export async function getAvailableSlots(params: {
     const slots: TimeSlot[] = []
     const slotInterval = 15 // minutes
 
-    // Parse work hours
-    const [workStartHour, workStartMinute] = workStartTime.split(':').map(Number)
-    const [workEndHour, workEndMinute] = workEndTime.split(':').map(Number)
+    // Convert everything to minutes for easier calculation
+    const workStartMinutes = parseInt(workStartTime.split(':')[0]) * 60 + parseInt(workStartTime.split(':')[1])
+    const workEndMinutes = parseInt(workEndTime.split(':')[0]) * 60 + parseInt(workEndTime.split(':')[1])
 
-    let currentHour = workStartHour
-    let currentMinute = workStartMinute
-    const workEndMinutes = workEndHour * 60 + workEndMinute
-
-    // Continue generating slots while there's enough time for the service
-    while (true) {
-      const currentMinutes = currentHour * 60 + currentMinute
-      const slotEndMinutes = currentMinutes + serviceDuration
+    // Generate slots from start to the last possible slot that fits before closing
+    for (let currentMinutes = workStartMinutes; currentMinutes < workEndMinutes; currentMinutes += slotInterval) {
+      // Check if there's enough time for the service to complete
+      const serviceEndMinutes = currentMinutes + serviceDuration
       
-      // Stop if this slot would end after work hours
-      if (slotEndMinutes > workEndMinutes) {
-        break
+      // Only add slot if service can complete before closing time
+      if (serviceEndMinutes > workEndMinutes) {
+        break // No more slots fit
       }
       
-      const timeStr = `${String(currentHour).padStart(2, '0')}:${String(
-        currentMinute
-      ).padStart(2, '0')}`
+      const currentHour = Math.floor(currentMinutes / 60)
+      const currentMinute = currentMinutes % 60
       
+      const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`
       const datetimeStr = `${date}T${timeStr}:00Z`
 
       // This slot has enough time since we already checked above
@@ -221,13 +240,6 @@ export async function getAvailableSlots(params: {
         datetime: datetimeStr,
         available: hasEnoughTime && !hasConflict && isInFuture,
       })
-
-      // Increment by interval
-      currentMinute += slotInterval
-      if (currentMinute >= 60) {
-        currentHour += 1
-        currentMinute -= 60
-      }
     }
 
     return { success: true, data: slots }
