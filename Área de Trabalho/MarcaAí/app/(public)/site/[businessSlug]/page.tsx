@@ -1,10 +1,14 @@
 import { getPublicSiteData } from '@/lib/actions/public-site'
 import { HeroSection } from '@/components/public-site/hero-section'
+import { ClientAccountBanner } from '@/components/public-site/client-account-banner'
 import { AboutSection } from '@/components/public-site/about-section'
 import { ServicesSection } from '@/components/public-site/services-section'
 import { GallerySection } from '@/components/public-site/gallery-section'
+import { ReviewsSection } from '@/components/public-site/reviews-section'
 import { ContactSection } from '@/components/public-site/contact-section'
 import { FloatingCTA } from '@/components/public-site/floating-cta'
+import { CustomizationProvider } from '@/components/providers/customization-provider'
+import { createPublicClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -44,10 +48,19 @@ export default async function PublicSitePage({ params }: PageProps) {
     notFound()
   }
 
-  const { business, profile, services, gallery } = result.data
+  const { business, profile, services, gallery, reviews, reviewStats } = result.data
+
+  // Buscar cores customizadas
+  const supabase = createPublicClient()
+  const { data: businessData } = await supabase
+    .from('businesses')
+    .select('custom_colors')
+    .eq('id', business.id)
+    .single()
 
   return (
-    <div className="min-h-screen">
+    <CustomizationProvider colors={businessData?.custom_colors}>
+      <div className="min-h-screen">
       {/* Hero Section */}
       <HeroSection
         businessName={business.name}
@@ -56,6 +69,9 @@ export default async function PublicSitePage({ params }: PageProps) {
         businessSlug={business.slug}
         ctaText={profile?.custom_cta_text}
       />
+
+      {/* Client Account Banner */}
+      <ClientAccountBanner businessSlug={business.slug} />
 
       {/* About Section */}
       {profile?.full_description && (
@@ -69,6 +85,11 @@ export default async function PublicSitePage({ params }: PageProps) {
 
       {/* Gallery Section */}
       {gallery.length > 0 && <GallerySection images={gallery} />}
+
+      {/* Reviews Section */}
+      {reviews.length > 0 && (
+        <ReviewsSection reviews={reviews} stats={reviewStats} />
+      )}
 
       {/* Contact Section */}
       <ContactSection
@@ -90,5 +111,6 @@ export default async function PublicSitePage({ params }: PageProps) {
         ctaText={profile?.custom_cta_text}
       />
     </div>
+    </CustomizationProvider>
   )
 }

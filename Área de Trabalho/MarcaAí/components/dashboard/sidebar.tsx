@@ -10,8 +10,12 @@ import {
   UserCog, 
   Settings,
   LayoutDashboard,
-  Globe
+  Globe,
+  Ban,
+  Star,
+  Package
 } from 'lucide-react'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 interface SidebarProps {
   businessId: string
@@ -52,6 +56,21 @@ const adminMenuItems = [
     icon: Globe,
   },
   {
+    title: 'Pacotes',
+    href: '/pacotes',
+    icon: Package,
+  },
+  {
+    title: 'Bloqueios',
+    href: '/bloqueios',
+    icon: Ban,
+  },
+  {
+    title: 'Avaliações',
+    href: '/avaliacoes',
+    icon: Star,
+  },
+  {
     title: 'Configurações',
     href: '/configuracoes',
     icon: Settings,
@@ -76,7 +95,10 @@ export function Sidebar({ businessId, className, userRole = 'admin' }: SidebarPr
   return (
     <aside className={cn('flex flex-col h-full', className)}>
       <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold text-primary">Agendly</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-primary">Agendly</h1>
+          <ThemeToggle />
+        </div>
       </div>
       
       <nav className="flex-1 p-4 space-y-2">

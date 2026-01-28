@@ -45,6 +45,12 @@ export interface PublicSiteData {
     currency: string
   }>
   gallery: GalleryImage[]
+  reviews: any[]
+  reviewStats: {
+    averageRating: number
+    totalReviews: number
+    distribution: Record<number, number>
+  }
 }
 
 export interface UpdatePublicProfileInput {

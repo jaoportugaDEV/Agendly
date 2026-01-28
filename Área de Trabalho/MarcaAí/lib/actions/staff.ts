@@ -2,7 +2,7 @@
 'use server'
 
 import { createClient, createPublicClient } from '@/lib/supabase/server'
-import { inviteStaffSchema, updateStaffMemberSchema } from '@/lib/validations/staff'
+import { inviteStaffSchema, updateStaffMemberSchema, resetStaffPasswordSchema } from '@/lib/validations/staff'
 import { revalidatePath } from 'next/cache'
 
 export async function getBusinessMembers(businessId: string) {
@@ -436,4 +436,54 @@ export async function reactivateStaffMember(
   console.log('✅ Member reactivated')
   revalidatePath(`/dashboard/${businessId}/equipe`)
   return { success: true }
+}
+
+export async function resetStaffPassword(
+  businessId: string,
+  userId: string,
+  input: unknown
+) {
+  const supabase = await createClient()
+  
+  // Verificar se usuário logado é admin
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Não autenticado' }
+  }
+
+  const { data: membership } = await supabase
+    .from('business_members')
+    .select('role')
+    .eq('business_id', businessId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!membership || membership.role !== 'admin') {
+    return { success: false, error: 'Sem permissão' }
+  }
+
+  // Validar input
+  const validation = resetStaffPasswordSchema.safeParse(input)
+  if (!validation.success) {
+    return {
+      success: false,
+      error: validation.error.issues[0]?.message || 'Dados inválidos',
+    }
+  }
+
+  // Usar service role para atualizar senha
+  const serviceSupabase = createPublicClient()
+  
+  const { error: updateError } = await serviceSupabase.auth.admin.updateUserById(
+    userId,
+    { password: validation.data.password }
+  )
+
+  if (updateError) {
+    console.error('Erro ao redefinir senha:', updateError)
+    return { success: false, error: 'Erro ao redefinir senha' }
+  }
+
+  revalidatePath(`/${businessId}/equipe`)
+  return { success: true, message: 'Senha redefinida com sucesso' }
 }

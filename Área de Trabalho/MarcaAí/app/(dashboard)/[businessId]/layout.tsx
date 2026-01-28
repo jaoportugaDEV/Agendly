@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation'
 import { getUser, getUserMembership } from '@/lib/actions/auth'
 import { getUserBusinesses } from '@/lib/actions/business'
+import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/dashboard/sidebar'
 import { MobileSidebar } from '@/components/dashboard/mobile-sidebar'
 import { UserMenu } from '@/components/dashboard/user-menu'
 import { BusinessSwitcher } from '@/components/dashboard/business-switcher'
+import { CustomizationProvider } from '@/components/providers/customization-provider'
 
 export default async function BusinessLayout({
   children,
@@ -44,8 +46,17 @@ export default async function BusinessLayout({
   const membership = await getUserMembership()
   const userRole = membership?.role || 'admin'
 
+  // Buscar cores customizadas
+  const supabase = await createClient()
+  const { data: businessData } = await supabase
+    .from('businesses')
+    .select('custom_colors')
+    .eq('id', params.businessId)
+    .single()
+
   return (
-    <div className="min-h-screen flex">
+    <CustomizationProvider colors={businessData?.custom_colors}>
+      <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-card">
         <Sidebar businessId={params.businessId} userRole={userRole} />
@@ -75,5 +86,6 @@ export default async function BusinessLayout({
         <main className="p-4 md:p-8">{children}</main>
       </div>
     </div>
+    </CustomizationProvider>
   )
 }

@@ -6,6 +6,7 @@ import { createPublicClient } from '@/lib/supabase/server'
 import { publicProfileSchema } from '@/lib/validations/public-site'
 import { revalidatePath } from 'next/cache'
 import type { PublicSiteData, UpdatePublicProfileInput } from '@/types/public-site'
+import { getBusinessReviews, getReviewStats } from './reviews'
 
 /**
  * Get public site data by business slug
@@ -76,6 +77,21 @@ export async function getPublicSiteData(
 
     console.log('🖼️ Gallery images count:', gallery?.length || 0)
 
+    // 5. Get public reviews
+    const [reviewsResult, statsResult] = await Promise.all([
+      getBusinessReviews(business.id, { limit: 10 }),
+      getReviewStats(business.id)
+    ])
+
+    const reviews = reviewsResult.success ? reviewsResult.data : []
+    const reviewStats = statsResult.success ? statsResult.data : {
+      averageRating: 0,
+      totalReviews: 0,
+      distribution: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
+    }
+
+    console.log('⭐ Reviews count:', reviews.length)
+
     return {
       success: true,
       data: {
@@ -83,6 +99,8 @@ export async function getPublicSiteData(
         profile: profile || null,
         services: services || [],
         gallery: gallery || [],
+        reviews,
+        reviewStats,
       },
     }
   } catch (error) {

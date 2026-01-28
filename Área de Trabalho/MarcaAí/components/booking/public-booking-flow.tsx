@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ServiceSelector } from './service-selector'
@@ -22,6 +23,7 @@ interface PublicBookingFlowProps {
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 
 export function PublicBookingFlow({ business, preselectedServiceId }: PublicBookingFlowProps) {
+  const router = useRouter()
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState<Step>(1)
   const [loading, setLoading] = useState(false)
@@ -139,13 +141,10 @@ export function PublicBookingFlow({ business, preselectedServiceId }: PublicBook
 
       console.log('📥 Result:', result)
 
-      if (result.success) {
+      if (result.success && result.data?.appointmentId) {
         console.log('✅ Appointment created successfully!')
-        setCurrentStep(6)
-        toast({
-          title: 'Sucesso!',
-          description: 'Agendamento realizado com sucesso.',
-        })
+        // Redirecionar para página de sucesso com informações
+        router.push(`/agendar/${business.slug}/sucesso?id=${result.data.appointmentId}`)
       } else {
         console.error('❌ Failed to create appointment:', result.error)
         toast({

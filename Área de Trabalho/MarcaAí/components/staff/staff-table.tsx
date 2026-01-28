@@ -28,10 +28,12 @@ import {
   Trash2,
   Clock,
   Crown,
+  Key,
 } from 'lucide-react'
 import { RemoveStaffDialog } from './remove-staff-dialog'
 import { ScheduleDialog } from './schedule-dialog'
 import { DeactivateStaffDialog } from './deactivate-staff-dialog'
+import { ResetPasswordDialog } from './reset-password-dialog'
 import { reactivateStaffMember } from '@/lib/actions/staff'
 import { useToast } from '@/components/ui/use-toast'
 
@@ -65,6 +67,7 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
   const [removingMember, setRemovingMember] = useState<StaffMember | null>(null)
   const [schedulingMember, setSchedulingMember] = useState<StaffMember | null>(null)
   const [deactivatingMember, setDeactivatingMember] = useState<StaffMember | null>(null)
+  const [resettingPassword, setResettingPassword] = useState<StaffMember | null>(null)
 
   // Identificar o fundador (primeiro admin)
   const founder = members
@@ -159,6 +162,10 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
                     <DropdownMenuItem onClick={() => setSchedulingMember(member)}>
                       <Clock className="mr-2 h-4 w-4" />
                       Horários de Trabalho
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setResettingPassword(member)}>
+                      <Key className="mr-2 h-4 w-4" />
+                      Redefinir Senha
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {member.active ? (
@@ -276,6 +283,16 @@ export function StaffTable({ members, businessId }: StaffTableProps) {
           onOpenChange={(open) => !open && setDeactivatingMember(null)}
           businessId={businessId}
           member={deactivatingMember}
+        />
+      )}
+
+      {resettingPassword && (
+        <ResetPasswordDialog
+          open={!!resettingPassword}
+          onOpenChange={(open) => !open && setResettingPassword(null)}
+          businessId={businessId}
+          userId={resettingPassword.user_id}
+          userName={resettingPassword.users?.full_name || resettingPassword.users?.email || 'Funcionário'}
         />
       )}
     </>
