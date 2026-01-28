@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import Joyride, { Step, CallBackProps, STATUS } from "react-joyride"
-import { useTheme } from "next-themes"
 
 interface OnboardingTourProps {
   steps: Step[]
@@ -11,10 +10,11 @@ interface OnboardingTourProps {
 }
 
 export function OnboardingTour({ steps, tourKey, run = true }: OnboardingTourProps) {
-  const { theme } = useTheme()
   const [runTour, setRunTour] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
     const hasSeenTour = localStorage.getItem(`tour-${tourKey}`)
     if (!hasSeenTour && run) {
       setRunTour(true)
@@ -29,6 +29,11 @@ export function OnboardingTour({ steps, tourKey, run = true }: OnboardingTourPro
       setRunTour(false)
       localStorage.setItem(`tour-${tourKey}`, 'true')
     }
+  }
+
+  // Só renderiza no cliente para evitar erro de hidratação
+  if (!isMounted) {
+    return null
   }
 
   return (
@@ -48,10 +53,10 @@ export function OnboardingTour({ steps, tourKey, run = true }: OnboardingTourPro
       }}
       styles={{
         options: {
-          primaryColor: theme === 'dark' ? '#60a5fa' : '#3b82f6',
-          backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-          textColor: theme === 'dark' ? '#f9fafb' : '#111827',
-          arrowColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+          primaryColor: '#3b82f6',
+          backgroundColor: '#ffffff',
+          textColor: '#111827',
+          arrowColor: '#ffffff',
           zIndex: 10000,
         },
       }}

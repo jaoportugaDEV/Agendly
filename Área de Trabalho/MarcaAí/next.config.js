@@ -1,19 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    turbo: {
+      root: process.cwd(),
+    },
+  },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'mmgeywupyemloqdojhcs.supabase.co',
-        port: '',
         pathname: '/storage/v1/object/public/**',
       },
     ],
-  },
-  experimental: {
-    turbo: {
-      root: process.cwd(),
-    },
   },
 }
 

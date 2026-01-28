@@ -44,6 +44,7 @@ export default async function AgendaPage({
       initialAppointments={appointments}
       services={services}
       staff={staff}
+      currentUserId={user.id}
     />
   )
 }

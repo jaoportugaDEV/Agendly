@@ -10,7 +10,6 @@ import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import Link from 'next/link'
 import { logoutClient } from '@/lib/actions/client-auth'
-import { ThemeToggle } from '@/components/theme-toggle'
 
 async function handleLogout() {
   'use server'
@@ -47,7 +46,6 @@ export default async function ClientDashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             <form action={handleLogout}>
               <Button variant="ghost" size="sm">
                 <LogOut className="h-4 w-4 mr-2" />

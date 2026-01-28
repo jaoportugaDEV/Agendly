@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
@@ -16,14 +15,11 @@ import {
   Star,
   Package
 } from 'lucide-react'
-import { ThemeToggle } from '@/components/theme-toggle'
 
 interface SidebarProps {
   businessId: string
   className?: string
-  userRole?: 'admin' | 'staff'
-  logoUrl?: string | null
-  businessName?: string
+  userRole?: 'admin' | 'staff' // Novo: role do usuário
 }
 
 // Menu completo para admins
@@ -89,7 +85,7 @@ const staffMenuItems = [
   },
 ]
 
-export function Sidebar({ businessId, className, userRole = 'admin', logoUrl, businessName }: SidebarProps) {
+export function Sidebar({ businessId, className, userRole = 'admin' }: SidebarProps) {
   const pathname = usePathname()
   
   // Selecionar menu baseado no role
@@ -98,10 +94,7 @@ export function Sidebar({ businessId, className, userRole = 'admin', logoUrl, bu
   return (
     <aside className={cn('flex flex-col h-full', className)}>
       <div className="p-6 border-b">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-primary">Agendly</h1>
-          <ThemeToggle />
-        </div>
+        <h1 className="text-2xl font-bold text-primary">Agendly</h1>
       </div>
       
       <nav className="flex-1 p-4 space-y-2">

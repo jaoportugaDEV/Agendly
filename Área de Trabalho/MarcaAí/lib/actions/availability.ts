@@ -3,6 +3,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import type { TimeSlot, DayOfWeek } from '@/types/shared'
+import { getBusinessHoursForDay } from './business-hours'
 
 // Map JavaScript day (0=Sunday) to our DayOfWeek type
 const DAY_MAP: Record<number, DayOfWeek> = {
@@ -56,7 +57,21 @@ export async function getAvailableSlots(params: {
     const targetDate = new Date(date + 'T00:00:00')
     const dayOfWeek = DAY_MAP[targetDate.getDay()]
 
-    // 4. Get staff schedule for this day
+    // 4. Get business hours for this day
+    const businessHoursResult = await getBusinessHoursForDay(businessId, dayOfWeek)
+    
+    if (!businessHoursResult.success || !businessHoursResult.data) {
+      return { success: false, error: 'Erro ao buscar horários do estabelecimento' }
+    }
+
+    const businessHours = businessHoursResult.data
+
+    // If business is closed on this day, return empty slots
+    if (businessHours.isClosed) {
+      return { success: true, data: [] }
+    }
+
+    // 5. Get staff schedule for this day
     const { data: schedules, error: scheduleError } = await supabase
       .from('staff_schedules')
       .select('start_time, end_time')
@@ -71,10 +86,26 @@ export async function getAvailableSlots(params: {
     }
 
     const schedule = schedules[0]
-    const workStartTime = schedule.start_time // e.g., "09:00:00"
-    const workEndTime = schedule.end_time // e.g., "18:00:00"
+    
+    // Intersect staff hours with business hours
+    // Use the later opening time and earlier closing time
+    const businessOpenMinutes = parseInt(businessHours.opening.split(':')[0]) * 60 + parseInt(businessHours.opening.split(':')[1])
+    const businessCloseMinutes = parseInt(businessHours.closing.split(':')[0]) * 60 + parseInt(businessHours.closing.split(':')[1])
+    const staffStartMinutes = parseInt(schedule.start_time.split(':')[0]) * 60 + parseInt(schedule.start_time.split(':')[1])
+    const staffEndMinutes = parseInt(schedule.end_time.split(':')[0]) * 60 + parseInt(schedule.end_time.split(':')[1])
+    
+    const effectiveStartMinutes = Math.max(businessOpenMinutes, staffStartMinutes)
+    const effectiveEndMinutes = Math.min(businessCloseMinutes, staffEndMinutes)
+    
+    // If no overlap, return empty slots
+    if (effectiveStartMinutes >= effectiveEndMinutes) {
+      return { success: true, data: [] }
+    }
+    
+    const workStartTime = `${Math.floor(effectiveStartMinutes / 60).toString().padStart(2, '0')}:${(effectiveStartMinutes % 60).toString().padStart(2, '0')}:00`
+    const workEndTime = `${Math.floor(effectiveEndMinutes / 60).toString().padStart(2, '0')}:${(effectiveEndMinutes % 60).toString().padStart(2, '0')}:00`
 
-    // 5. Get existing appointments for this staff on this date
+    // 6. Get existing appointments for this staff on this date
     const startOfDay = `${date}T00:00:00`
     const endOfDay = `${date}T23:59:59`
 
@@ -92,7 +123,21 @@ export async function getAvailableSlots(params: {
       return { success: false, error: 'Erro ao verificar agendamentos' }
     }
 
-    // 6. Generate time slots (every 15 minutes)
+    // 6.5. Get schedule blocks for this staff on this date
+    const { data: blocks, error: blocksError } = await supabase
+      .from('schedule_blocks')
+      .select('start_time, end_time, staff_id, applies_to_all')
+      .eq('business_id', businessId)
+      .gte('start_time', startOfDay)
+      .lte('start_time', endOfDay)
+      .or(`staff_id.eq.${staffId},applies_to_all.eq.true`)
+
+    if (blocksError) {
+      console.error('Erro ao verificar bloqueios:', blocksError)
+      // Não retornar erro, apenas continuar sem bloqueios
+    }
+
+    // 7. Generate time slots (every 15 minutes)
     const slots: TimeSlot[] = []
     const slotInterval = 15 // minutes
 
@@ -120,24 +165,45 @@ export async function getAvailableSlots(params: {
 
       const hasEnoughTime = slotEndMinutes <= workEndMinutes
 
-      // Check if this slot conflicts with any existing appointment
+      // Check if this slot conflicts with any existing appointment or block
       let hasConflict = false
-      if (hasEnoughTime && appointments) {
+      if (hasEnoughTime) {
         const slotStart = new Date(datetimeStr)
         const slotEnd = new Date(slotStart.getTime() + serviceDuration * 60000)
 
-        for (const apt of appointments) {
-          const aptStart = new Date(apt.start_time)
-          const aptEnd = new Date(apt.end_time)
+        // Check appointments
+        if (appointments) {
+          for (const apt of appointments) {
+            const aptStart = new Date(apt.start_time)
+            const aptEnd = new Date(apt.end_time)
 
-          // Check for overlap
-          if (
-            (slotStart >= aptStart && slotStart < aptEnd) ||
-            (slotEnd > aptStart && slotEnd <= aptEnd) ||
-            (slotStart <= aptStart && slotEnd >= aptEnd)
-          ) {
-            hasConflict = true
-            break
+            // Check for overlap
+            if (
+              (slotStart >= aptStart && slotStart < aptEnd) ||
+              (slotEnd > aptStart && slotEnd <= aptEnd) ||
+              (slotStart <= aptStart && slotEnd >= aptEnd)
+            ) {
+              hasConflict = true
+              break
+            }
+          }
+        }
+
+        // Check schedule blocks
+        if (!hasConflict && blocks) {
+          for (const block of blocks) {
+            const blockStart = new Date(block.start_time)
+            const blockEnd = new Date(block.end_time)
+
+            // Check for overlap
+            if (
+              (slotStart >= blockStart && slotStart < blockEnd) ||
+              (slotEnd > blockStart && slotEnd <= blockEnd) ||
+              (slotStart <= blockStart && slotEnd >= blockEnd)
+            ) {
+              hasConflict = true
+              break
+            }
           }
         }
       }
@@ -243,11 +309,43 @@ export async function validateTimeSlot(params: {
       }
     }
 
-    // 5. Check if staff is working at this time
+    // 5. Check business hours
     const targetDate = startDate
     const dayOfWeek = DAY_MAP[targetDate.getDay()]
-    const targetTime = startDate.toTimeString().substring(0, 8)
+    
+    const businessHoursResult = await getBusinessHoursForDay(businessId, dayOfWeek)
+    
+    if (!businessHoursResult.success || !businessHoursResult.data) {
+      return {
+        success: true,
+        available: false,
+        reason: 'Erro ao verificar horário de funcionamento',
+      }
+    }
 
+    const businessHours = businessHoursResult.data
+
+    if (businessHours.isClosed) {
+      return {
+        success: true,
+        available: false,
+        reason: 'Estabelecimento fechado neste dia',
+      }
+    }
+
+    const targetTime = startDate.toTimeString().substring(0, 8)
+    const endTime = endDate.toTimeString().substring(0, 8)
+
+    // Check if within business hours
+    if (targetTime < businessHours.opening || endTime > businessHours.closing) {
+      return {
+        success: true,
+        available: false,
+        reason: 'Horário fora do expediente do estabelecimento',
+      }
+    }
+
+    // 6. Check if staff is working at this time
     const { data: schedules, error: scheduleError } = await supabase
       .from('staff_schedules')
       .select('start_time, end_time')
@@ -266,9 +364,7 @@ export async function validateTimeSlot(params: {
 
     const schedule = schedules[0]
     
-    // Check if appointment fits within work hours
-    const endTime = endDate.toTimeString().substring(0, 8)
-    
+    // Check if appointment fits within staff work hours
     if (targetTime < schedule.start_time || endTime > schedule.end_time) {
       return {
         success: true,

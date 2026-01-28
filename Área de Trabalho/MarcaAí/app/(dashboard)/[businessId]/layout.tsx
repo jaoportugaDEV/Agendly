@@ -46,11 +46,11 @@ export default async function BusinessLayout({
   const membership = await getUserMembership()
   const userRole = membership?.role || 'admin'
 
-  // Buscar cores customizadas e logo
+  // Buscar cores customizadas
   const supabase = await createClient()
   const { data: businessData } = await supabase
     .from('businesses')
-    .select('custom_colors, logo_url, name')
+    .select('custom_colors')
     .eq('id', params.businessId)
     .single()
 
@@ -59,12 +59,7 @@ export default async function BusinessLayout({
       <div className="min-h-screen flex">
       {/* Desktop Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 border-r bg-card">
-        <Sidebar 
-          businessId={params.businessId} 
-          userRole={userRole}
-          logoUrl={businessData?.logo_url}
-          businessName={businessData?.name}
-        />
+        <Sidebar businessId={params.businessId} userRole={userRole} />
       </div>
 
       {/* Main Content */}
@@ -72,33 +67,15 @@ export default async function BusinessLayout({
         {/* Header */}
         <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <div className="flex h-16 items-center gap-4 px-4">
-            <MobileSidebar 
-              businessId={params.businessId} 
-              userRole={userRole}
-              logoUrl={businessData?.logo_url}
-              businessName={businessData?.name}
-            />
+            <MobileSidebar businessId={params.businessId} userRole={userRole} />
             
-            <div className="flex items-center gap-4">
+            <div className="flex-1 flex items-center gap-4">
               <div className="max-w-[200px]">
                 <BusinessSwitcher
                   businesses={businesses}
                   currentBusinessId={params.businessId}
                 />
               </div>
-            </div>
-
-            {/* Logo da Empresa no Centro */}
-            <div className="flex-1 flex justify-center">
-              {businessData?.logo_url && (
-                <div className="relative h-10 w-10">
-                  <img
-                    src={businessData.logo_url}
-                    alt={businessData?.name || 'Logo'}
-                    className="h-full w-full object-contain"
-                  />
-                </div>
-              )}
             </div>
 
             <UserMenu user={userData} />

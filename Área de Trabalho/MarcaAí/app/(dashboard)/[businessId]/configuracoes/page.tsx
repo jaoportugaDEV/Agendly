@@ -4,10 +4,10 @@ import { getUserBusinesses } from '@/lib/actions/business'
 import { createClient } from '@/lib/supabase/server'
 import { DeleteBusinessSection } from '@/components/settings/delete-business-section'
 import { BrandCustomizationSection } from '@/components/settings/brand-customization-section'
+import { BusinessHoursSection } from '@/components/settings/business-hours-section'
 import { HelpTooltip } from '@/components/help-tooltip'
 import { OnboardingTour } from '@/components/onboarding-tour'
 import { configuracoesTourSteps } from '@/lib/tours/dashboard-tours'
-import { hslToHex } from '@/lib/utils/colors'
 
 export default async function ConfiguracoesPage({
   params,
@@ -27,23 +27,13 @@ export default async function ConfiguracoesPage({
     redirect('/dashboard')
   }
 
-  // Buscar dados de customização
+  // Buscar logo da empresa
   const supabase = await createClient()
   const { data: business } = await supabase
     .from('businesses')
-    .select('logo_url, custom_colors')
+    .select('logo_url')
     .eq('id', params.businessId)
     .single()
-
-  // Converter cores HSL para HEX para o color picker
-  let currentColors
-  if (business?.custom_colors) {
-    currentColors = {
-      primary: hslToHex(business.custom_colors.primary),
-      secondary: hslToHex(business.custom_colors.secondary),
-      accent: hslToHex(business.custom_colors.accent),
-    }
-  }
 
   return (
     <>
@@ -55,14 +45,16 @@ export default async function ConfiguracoesPage({
           <HelpTooltip content="Configure a identidade visual da sua empresa e outras opções avançadas." />
         </div>
 
-        {/* Customização de marca */}
+        {/* Logo da empresa */}
         <div className="tour-brand-customization">
           <BrandCustomizationSection
             businessId={params.businessId}
             currentLogo={business?.logo_url}
-            currentColors={currentColors}
           />
         </div>
+
+        {/* Horários de Funcionamento */}
+        <BusinessHoursSection businessId={params.businessId} />
 
         {/* Zona de perigo - Excluir empresa */}
         <DeleteBusinessSection

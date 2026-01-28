@@ -256,3 +256,62 @@ export async function deleteAppointment(appointmentId: string) {
   revalidatePath('/dashboard')
   return { success: true }
 }
+
+export async function updateAppointmentTime(
+  appointmentId: string,
+  newStartTime: string,
+  newEndTime: string
+) {
+  const supabase = await createClient()
+
+  // Verificar autenticação
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Não autenticado' }
+  }
+
+  // Buscar agendamento para verificar permissões
+  const { data: appointment } = await supabase
+    .from('appointments')
+    .select('business_id, staff_id, service:services(duration_minutes)')
+    .eq('id', appointmentId)
+    .is('deleted_at', null)
+    .single()
+
+  if (!appointment) {
+    return { success: false, error: 'Agendamento não encontrado' }
+  }
+
+  // Verificar se usuário tem acesso ao negócio
+  const { data: membership } = await supabase
+    .from('business_members')
+    .select('role')
+    .eq('business_id', appointment.business_id)
+    .eq('user_id', user.id)
+    .eq('active', true)
+    .single()
+
+  if (!membership) {
+    return { success: false, error: 'Sem permissão' }
+  }
+
+  // Atualizar horário
+  const { error } = await (supabase
+    .from('appointments') as any)
+    .update({
+      start_time: newStartTime,
+      end_time: newEndTime,
+    })
+    .eq('id', appointmentId)
+
+  if (error) {
+    console.error('Erro ao atualizar horário:', error)
+    if (error.message && error.message.includes('Conflito de horário')) {
+      return { success: false, error: 'Horário indisponível - conflito com outro agendamento' }
+    }
+    return { success: false, error: 'Erro ao atualizar horário' }
+  }
+
+  revalidatePath(`/${appointment.business_id}/agenda`)
+  return { success: true }
+}
