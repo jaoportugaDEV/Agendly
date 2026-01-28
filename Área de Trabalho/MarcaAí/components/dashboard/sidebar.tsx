@@ -11,7 +11,6 @@ import {
   Settings,
   LayoutDashboard,
   Globe,
-  Ban,
   Star,
   Package
 } from 'lucide-react'
@@ -58,11 +57,6 @@ const adminMenuItems = [
     title: 'Pacotes',
     href: '/pacotes',
     icon: Package,
-  },
-  {
-    title: 'Bloqueios',
-    href: '/bloqueios',
-    icon: Ban,
   },
   {
     title: 'Avaliações',

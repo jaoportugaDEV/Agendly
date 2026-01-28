@@ -74,10 +74,28 @@ export function BookingSummary({
           <div className="flex-1">
             <p className="text-sm text-muted-foreground">Serviço</p>
             <p className="font-semibold">{service.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {formatDuration(service.duration_minutes)} •{' '}
-              {formatPrice(service.price, service.currency)}
-            </p>
+            <div className="flex items-baseline gap-2 text-sm">
+              <span className="text-muted-foreground">
+                {formatDuration(service.duration_minutes)} •{' '}
+              </span>
+              {service.promotion ? (
+                <>
+                  <span className="font-semibold text-primary">
+                    {formatPrice(service.promotion.promotional_price, service.currency)}
+                  </span>
+                  <span className="text-xs text-muted-foreground line-through">
+                    {formatPrice(service.price, service.currency)}
+                  </span>
+                  <span className="text-xs font-medium text-green-600">
+                    ({Math.round(service.promotion.discount_percentage)}% OFF)
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground">
+                  {formatPrice(service.price, service.currency)}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

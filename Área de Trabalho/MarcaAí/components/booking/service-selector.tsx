@@ -4,6 +4,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { PublicServiceData } from '@/types/shared'
 import { Check } from 'lucide-react'
+import { PromotionBadge } from './promotion-badge'
+import { formatWeekdays } from '@/lib/utils/promotions'
 
 interface ServiceSelectorProps {
   services: PublicServiceData[]
@@ -49,13 +51,20 @@ export function ServiceSelector({
       {services.map((service) => (
         <Card
           key={service.id}
-          className={`p-4 cursor-pointer transition-all hover:shadow-md ${
+          className={`p-4 cursor-pointer transition-all hover:shadow-md relative ${
             selectedServiceId === service.id
               ? 'ring-2 ring-primary'
               : ''
           }`}
           onClick={() => onSelect(service.id)}
         >
+          {/* Promotion Badge */}
+          {service.promotion && (
+            <div className="absolute top-2 right-2">
+              <PromotionBadge discount={service.promotion.discount_percentage} />
+            </div>
+          )}
+
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <h3 className="font-semibold text-lg mb-1">{service.name}</h3>
@@ -68,9 +77,31 @@ export function ServiceSelector({
                 <span className="text-muted-foreground">
                   Duração: {formatDuration(service.duration_minutes)}
                 </span>
-                <span className="font-semibold text-primary">
-                  {formatPrice(service.price, service.currency)}
-                </span>
+                
+                {/* Price with promotion */}
+                <div className="flex items-baseline gap-2">
+                  {service.promotion ? (
+                    <>
+                      <span className="font-semibold text-lg text-primary">
+                        {formatPrice(service.promotion.promotional_price, service.currency)}
+                      </span>
+                      <span className="text-sm text-muted-foreground line-through">
+                        {formatPrice(service.price, service.currency)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-semibold text-primary">
+                      {formatPrice(service.price, service.currency)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Promotion validity */}
+                {service.promotion && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Válido: {formatWeekdays(service.promotion.weekdays).toLowerCase()}
+                  </p>
+                )}
               </div>
             </div>
             {selectedServiceId === service.id && (

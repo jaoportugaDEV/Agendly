@@ -270,6 +270,7 @@ export function PublicBookingFlow({ business, preselectedServiceId }: PublicBook
             staffId={selectedStaffId}
             selectedDateTime={selectedDateTime}
             onSelect={setSelectedDateTime}
+            promotion={selectedService?.promotion}
           />
         )}
 

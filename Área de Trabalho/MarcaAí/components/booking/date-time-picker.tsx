@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight, Calendar, Clock, Loader2 } from 'lucide-react'
-import type { TimeSlot } from '@/types/shared'
+import { Badge } from '@/components/ui/badge'
+import { ChevronLeft, ChevronRight, Calendar, Clock, Loader2, Percent } from 'lucide-react'
+import type { TimeSlot, PublicPromotionData } from '@/types/shared'
 import { getAvailableSlots, getAvailableSlotsAnyStaff } from '@/lib/actions/availability'
+import { isDateValidForPromotion } from '@/lib/utils/promotions'
 
 interface DateTimePickerProps {
   businessId: string
@@ -13,6 +15,7 @@ interface DateTimePickerProps {
   staffId: string
   selectedDateTime: string | null
   onSelect: (datetime: string) => void
+  promotion?: PublicPromotionData | null
 }
 
 export function DateTimePicker({
@@ -21,6 +24,7 @@ export function DateTimePicker({
   staffId,
   selectedDateTime,
   onSelect,
+  promotion,
 }: DateTimePickerProps) {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([])
@@ -103,6 +107,23 @@ export function DateTimePicker({
       dates.push(date)
     }
     return dates
+  }
+
+  const isDateValidForPromo = (date: Date) => {
+    if (!promotion) return true
+    
+    const dayOfWeek = date.getDay()
+    if (!promotion.weekdays.includes(dayOfWeek)) return false
+    
+    if (promotion.recurrence_type === 'date_range') {
+      if (!promotion.start_date || !promotion.end_date) return false
+      const dateOnly = new Date(date.toISOString().split('T')[0])
+      const start = new Date(promotion.start_date)
+      const end = new Date(promotion.end_date)
+      return dateOnly >= start && dateOnly <= end
+    }
+    
+    return true
   }
 
   const goToPreviousWeek = () => {
@@ -198,15 +219,24 @@ export function DateTimePicker({
             const isToday =
               formatDate(new Date()) === dateStr
             const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+            const isValidPromoDate = isDateValidForPromo(date)
 
             return (
               <Button
                 key={dateStr}
                 variant={isSelected ? 'default' : 'outline'}
-                className="flex flex-col h-auto py-3"
+                className="flex flex-col h-auto py-3 relative"
                 onClick={() => setSelectedDate(dateStr)}
-                disabled={isPast}
+                disabled={isPast || (promotion && !isValidPromoDate)}
               >
+                {promotion && isValidPromoDate && !isPast && (
+                  <Badge 
+                    variant="destructive" 
+                    className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px]"
+                  >
+                    <Percent className="h-3 w-3" />
+                  </Badge>
+                )}
                 <span className="text-xs uppercase">
                   {date.toLocaleDateString('pt-PT', { weekday: 'short' })}
                 </span>
@@ -214,10 +244,24 @@ export function DateTimePicker({
                 {isToday && (
                   <span className="text-xs text-muted-foreground">Hoje</span>
                 )}
+                {promotion && isValidPromoDate && !isPast && (
+                  <span className="text-[10px] text-primary font-medium mt-1">Promo</span>
+                )}
               </Button>
             )
           })}
         </div>
+        
+        {promotion && (
+          <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-md">
+            <p className="text-sm text-green-900 dark:text-green-100 flex items-center gap-2">
+              <Percent className="h-4 w-4" />
+              <span>
+                Promoção ativa! Apenas dias marcados com <Percent className="inline h-3 w-3" /> estão disponíveis para esta oferta.
+              </span>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Time Slots */}

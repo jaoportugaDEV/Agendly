@@ -1,12 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { getBusinessPackages } from '@/lib/actions/packages'
+import { getPromotions } from '@/lib/actions/promotions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Package, Plus, TrendingDown } from 'lucide-react'
+import { Package, Plus, TrendingDown, Percent } from 'lucide-react'
 import { CreatePackageDialog } from '@/components/admin/create-package-dialog'
 import { DeletePackageButton } from '@/components/admin/delete-package-button'
+import { PromotionFormDialog } from '@/components/admin/promotion-form-dialog'
+import { PromotionCard } from '@/components/admin/promotion-card'
 
 export default async function PackagesPage({
   params,
@@ -30,8 +33,8 @@ export default async function PackagesPage({
     redirect(`/${params.businessId}`)
   }
 
-  // Buscar pacotes e serviços
-  const [packagesResult, servicesResult] = await Promise.all([
+  // Buscar pacotes, serviços e promoções
+  const [packagesResult, servicesResult, promotionsResult] = await Promise.all([
     getBusinessPackages(params.businessId),
     supabase
       .from('services')
@@ -39,11 +42,13 @@ export default async function PackagesPage({
       .eq('business_id', params.businessId)
       .eq('active', true)
       .is('deleted_at', null)
-      .order('name')
+      .order('name'),
+    getPromotions(params.businessId)
   ])
 
   const packages = packagesResult.success ? packagesResult.data : []
   const services = servicesResult.data || []
+  const promotions = promotionsResult.success ? promotionsResult.data : []
 
   // Buscar moeda do negócio
   const { data: business } = await supabase
@@ -128,6 +133,55 @@ export default async function PackagesPage({
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Promotions Section */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Promoções Ativas</h2>
+            <p className="text-sm text-muted-foreground">
+              Configure promoções por dia da semana para serviços e pacotes
+            </p>
+          </div>
+          <PromotionFormDialog 
+            businessId={params.businessId}
+            services={services}
+            packages={packages}
+            currency={currency}
+          />
+        </div>
+        
+        {promotions.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <Percent className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma promoção criada</h3>
+              <p className="text-muted-foreground mb-4">
+                Crie promoções especiais para dias da semana específicos
+              </p>
+              <PromotionFormDialog 
+                businessId={params.businessId}
+                services={services}
+                packages={packages}
+                currency={currency}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {promotions.map((promotion: any) => (
+              <PromotionCard
+                key={promotion.id}
+                promotion={promotion}
+                currency={currency}
+                services={services}
+                packages={packages}
+                businessId={params.businessId}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Packages List */}

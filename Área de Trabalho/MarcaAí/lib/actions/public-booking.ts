@@ -88,6 +88,51 @@ export async function createPublicAppointment(
 
     console.log('✅ Service found:', service)
 
+    // 4.5. Check for active promotion
+    console.log('🔍 Checking for active promotion for service:', serviceId)
+    const { data: promotion, error: promotionError } = await supabase
+      .from('promotions')
+      .select('id, promotional_price, weekdays, recurrence_type, start_date, end_date')
+      .eq('business_id', businessId)
+      .eq('target_id', serviceId)
+      .eq('promotion_type', 'service')
+      .eq('active', true)
+      .is('deleted_at', null)
+      .single()
+
+    let finalPrice = service.price
+
+    if (promotion && !promotionError) {
+      console.log('🎉 Promotion found:', promotion)
+      
+      // Validate if the selected date is valid for the promotion
+      const appointmentDate = new Date(startTime)
+      const dayOfWeek = appointmentDate.getDay()
+      
+      let isValidForPromotion = promotion.weekdays.includes(dayOfWeek)
+      
+      // If date_range type, also check date validity
+      if (isValidForPromotion && promotion.recurrence_type === 'date_range') {
+        if (promotion.start_date && promotion.end_date) {
+          const dateOnly = new Date(appointmentDate.toISOString().split('T')[0])
+          const start = new Date(promotion.start_date)
+          const end = new Date(promotion.end_date)
+          isValidForPromotion = dateOnly >= start && dateOnly <= end
+        } else {
+          isValidForPromotion = false
+        }
+      }
+      
+      if (isValidForPromotion) {
+        finalPrice = promotion.promotional_price
+        console.log('✅ Promotional price applied:', finalPrice)
+      } else {
+        console.log('⚠️ Promotion not valid for this date')
+      }
+    } else {
+      console.log('ℹ️ No active promotion found for this service')
+    }
+
     // 5. Find or create customer
     console.log('🔍 Finding or creating customer:', customer.phone)
     let customerId: string
@@ -156,7 +201,7 @@ export async function createPublicAppointment(
       start_time: startTime,
       end_time: endDate.toISOString(),
       status: 'pending',
-      price: service.price,
+      price: finalPrice,
       currency: service.currency,
       source: 'public',
     })
@@ -171,7 +216,7 @@ export async function createPublicAppointment(
         start_time: startTime,
         end_time: endDate.toISOString(),
         status: 'pending',
-        price: service.price,
+        price: finalPrice,
         currency: service.currency,
         source: 'public',
       })

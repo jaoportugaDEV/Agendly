@@ -118,10 +118,45 @@ export interface PublicServiceData {
   duration_minutes: number
   price: number
   currency: string
+  promotion?: PublicPromotionData | null
 }
 
 export interface PublicStaffData {
   id: string
   name: string
   avatar_url?: string
+}
+
+// Promotion types
+export type PromotionType = 'service' | 'package'
+export type RecurrenceType = 'recurring' | 'date_range'
+
+export interface Promotion {
+  id: string
+  business_id: string
+  name: string
+  description?: string
+  promotion_type: PromotionType
+  target_id: string
+  promotional_price: number
+  original_price: number
+  discount_percentage: number
+  weekdays: number[]
+  recurrence_type: RecurrenceType
+  start_date?: string
+  end_date?: string
+  active: boolean
+  created_at: string
+  updated_at: string
+  deleted_at?: string
+}
+
+export interface PublicPromotionData {
+  id: string
+  promotional_price: number
+  discount_percentage: number
+  weekdays: number[]
+  recurrence_type: RecurrenceType
+  start_date?: string
+  end_date?: string
 }

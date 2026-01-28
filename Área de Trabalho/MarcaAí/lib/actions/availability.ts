@@ -147,23 +147,26 @@ export async function getAvailableSlots(params: {
 
     let currentHour = workStartHour
     let currentMinute = workStartMinute
+    const workEndMinutes = workEndHour * 60 + workEndMinute
 
-    while (
-      currentHour < workEndHour ||
-      (currentHour === workEndHour && currentMinute < workEndMinute)
-    ) {
+    // Continue generating slots while there's enough time for the service
+    while (true) {
+      const currentMinutes = currentHour * 60 + currentMinute
+      const slotEndMinutes = currentMinutes + serviceDuration
+      
+      // Stop if this slot would end after work hours
+      if (slotEndMinutes > workEndMinutes) {
+        break
+      }
+      
       const timeStr = `${String(currentHour).padStart(2, '0')}:${String(
         currentMinute
       ).padStart(2, '0')}`
       
       const datetimeStr = `${date}T${timeStr}:00Z`
 
-      // Check if this slot has enough time for the service
-      // (must end before work end time)
-      const slotEndMinutes = currentHour * 60 + currentMinute + serviceDuration
-      const workEndMinutes = workEndHour * 60 + workEndMinute
-
-      const hasEnoughTime = slotEndMinutes <= workEndMinutes
+      // This slot has enough time since we already checked above
+      const hasEnoughTime = true
 
       // Check if this slot conflicts with any existing appointment or block
       let hasConflict = false
