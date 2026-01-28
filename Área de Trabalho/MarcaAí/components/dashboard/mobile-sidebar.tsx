@@ -9,9 +9,11 @@ import { Sidebar } from './sidebar'
 interface MobileSidebarProps {
   businessId: string
   userRole?: 'admin' | 'staff'
+  logoUrl?: string | null
+  businessName?: string
 }
 
-export function MobileSidebar({ businessId, userRole = 'admin' }: MobileSidebarProps) {
+export function MobileSidebar({ businessId, userRole = 'admin', logoUrl, businessName }: MobileSidebarProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -22,7 +24,12 @@ export function MobileSidebar({ businessId, userRole = 'admin' }: MobileSidebarP
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-72">
-        <Sidebar businessId={businessId} userRole={userRole} />
+        <Sidebar 
+          businessId={businessId} 
+          userRole={userRole}
+          logoUrl={logoUrl}
+          businessName={businessName}
+        />
       </SheetContent>
     </Sheet>
   )

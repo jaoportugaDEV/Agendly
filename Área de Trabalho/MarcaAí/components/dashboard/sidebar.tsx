@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { 
@@ -20,7 +21,9 @@ import { ThemeToggle } from '@/components/theme-toggle'
 interface SidebarProps {
   businessId: string
   className?: string
-  userRole?: 'admin' | 'staff' // Novo: role do usuário
+  userRole?: 'admin' | 'staff'
+  logoUrl?: string | null
+  businessName?: string
 }
 
 // Menu completo para admins
@@ -86,7 +89,7 @@ const staffMenuItems = [
   },
 ]
 
-export function Sidebar({ businessId, className, userRole = 'admin' }: SidebarProps) {
+export function Sidebar({ businessId, className, userRole = 'admin', logoUrl, businessName }: SidebarProps) {
   const pathname = usePathname()
   
   // Selecionar menu baseado no role
