@@ -30,6 +30,8 @@ export function PublicSiteEditor({ businessId, initialData }: PublicSiteEditorPr
     website: initialData?.website || '',
     show_address: initialData?.show_address ?? false,
     custom_cta_text: initialData?.custom_cta_text || 'Agendar agora',
+    google_maps_url: initialData?.google_maps_url || '',
+    address: initialData?.address || '',
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -168,6 +170,40 @@ export function PublicSiteEditor({ businessId, initialData }: PublicSiteEditorPr
                     setFormData({ ...formData, website: e.target.value })
                   }
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="address">Endereço (opcional)</Label>
+                <Textarea
+                  id="address"
+                  placeholder="Rua Exemplo, 123&#10;1000-001 Lisboa, Portugal"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                  maxLength={300}
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Digite o endereço completo do estabelecimento. Será exibido no site com botão "Ver no Google Maps"
+                </p>
+              </div>
+
+              <div>
+                <Label htmlFor="google_maps_url">Link do Google Maps (opcional)</Label>
+                <Input
+                  id="google_maps_url"
+                  type="url"
+                  placeholder="https://maps.google.com/..."
+                  value={formData.google_maps_url}
+                  onChange={(e) =>
+                    setFormData({ ...formData, google_maps_url: e.target.value })
+                  }
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  <strong>Para ter o marcador vermelho:</strong> No Google Maps, busque seu estabelecimento → clique em "Compartilhar" → escolha "Incorporar um mapa" → copie APENAS a URL dentro de src="..." do código HTML. 
+                  Exemplo: <code className="text-xs">https://www.google.com/maps/embed?pb=!1m18...</code>
+                </p>
               </div>
 
               <div className="flex items-center space-x-2">

@@ -103,6 +103,9 @@ export default async function PublicSitePage({ params }: PageProps) {
         showAddress={profile?.show_address ?? false}
         businessSlug={business.slug}
         ctaText={profile?.custom_cta_text}
+        googleMapsUrl={profile?.google_maps_url}
+        businessName={business.name}
+        profileAddress={profile?.address}
       />
 
       {/* Floating CTA (Mobile only) */}

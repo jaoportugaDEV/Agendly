@@ -9,6 +9,8 @@ export const publicProfileSchema = z.object({
   website: z.string().url('URL do site inválida').optional().or(z.literal('')),
   show_address: z.boolean(),
   custom_cta_text: z.string().max(50, 'Texto do botão deve ter no máximo 50 caracteres').optional().or(z.literal('')),
+  google_maps_url: z.string().url('URL do Google Maps inválida').optional().or(z.literal('')),
+  address: z.string().max(300, 'Endereço deve ter no máximo 300 caracteres').optional().or(z.literal('')),
 })
 
 export type PublicProfileInput = z.infer<typeof publicProfileSchema>

@@ -12,6 +12,8 @@ export interface PublicProfileData {
   website?: string
   show_address: boolean
   custom_cta_text?: string
+  google_maps_url?: string
+  address?: string
   created_at?: string
   updated_at?: string
 }
@@ -62,6 +64,8 @@ export interface UpdatePublicProfileInput {
   website?: string
   show_address?: boolean
   custom_cta_text?: string
+  google_maps_url?: string
+  address?: string
 }
 
 export interface AddGalleryImageInput {
