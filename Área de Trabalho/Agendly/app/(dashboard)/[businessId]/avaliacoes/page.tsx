@@ -37,9 +37,9 @@ export default async function ReviewsPage({
     redirect(`/${params.businessId}`)
   }
 
-  // Buscar reviews e estatísticas
+  // Buscar reviews e estatísticas (adminView = true para ver todas as reviews)
   const [reviewsResult, statsResult] = await Promise.all([
-    getBusinessReviews(params.businessId, { limit: 50 }),
+    getBusinessReviews(params.businessId, { limit: 50, adminView: true }),
     getReviewStats(params.businessId)
   ])
 
@@ -235,9 +235,19 @@ function ReviewCard({ review, showRespondForm = false }: { review: any; showResp
                   {review.is_public ? 'Pública' : 'Privada'}
                 </Badge>
               </div>
-              <CardDescription>
-                {format(new Date(review.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                {review.staff && ` • Atendido por ${review.staff.full_name}`}
+              <CardDescription className="space-y-1">
+                <div>
+                  {format(new Date(review.created_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                  {review.staff && ` • Atendido por ${review.staff.full_name}`}
+                </div>
+                {review.appointment && (
+                  <div className="text-xs">
+                    <span className="font-medium">Serviço:</span> {review.appointment.service?.name}
+                    {' • '}
+                    <span className="font-medium">Data:</span>{' '}
+                    {format(new Date(review.appointment.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </div>
+                )}
               </CardDescription>
             </div>
             <div className="flex items-center gap-3">

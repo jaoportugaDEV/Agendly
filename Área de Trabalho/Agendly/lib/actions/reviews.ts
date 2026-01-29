@@ -73,7 +73,9 @@ export async function createReview(data: {
 }
 
 /**
- * Busca avaliações públicas de um negócio
+ * Busca avaliações de um negócio
+ * Se adminView = true, busca todas (públicas e privadas)
+ * Se adminView = false, busca apenas públicas
  */
 export async function getBusinessReviews(
   businessId: string,
@@ -81,21 +83,31 @@ export async function getBusinessReviews(
     limit?: number
     offset?: number
     rating?: number
+    adminView?: boolean
   }
 ) {
   try {
-    const supabase = createPublicClient()
+    const supabase = filters?.adminView ? await createClient() : createPublicClient()
 
     let query = supabase
       .from('appointment_reviews')
       .select(`
         *,
         customer:customers(name, avatar_url),
-        staff:users(full_name)
+        staff:users(full_name),
+        appointment:appointments(
+          id,
+          start_time,
+          service:services(name)
+        )
       `)
       .eq('business_id', businessId)
-      .eq('is_public', true)
       .order('created_at', { ascending: false })
+
+    // Para views públicas, filtrar apenas reviews públicas
+    if (!filters?.adminView) {
+      query = query.eq('is_public', true)
+    }
 
     if (filters?.rating) {
       query = query.eq('rating', filters.rating)
