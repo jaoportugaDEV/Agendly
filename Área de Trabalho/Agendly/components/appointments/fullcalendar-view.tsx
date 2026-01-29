@@ -75,18 +75,24 @@ export function FullCalendarView({
   // Converter appointments e blocks para eventos do FullCalendar
   const events = [
     // Agendamentos
-    ...appointments.map((apt) => ({
-      id: `apt-${apt.id}`,
-      title: `${getStatusIcon(apt.status)} ${apt.customer?.name || 'Cliente'} - ${apt.service?.name || 'Serviço'}`,
-      start: apt.start_time,
-      end: apt.end_time,
-      backgroundColor: getStatusColor(apt.status),
-      borderColor: getStatusColor(apt.status),
-      extendedProps: {
-        type: 'appointment',
-        appointment: apt,
-      },
-    })),
+    ...appointments.map((apt) => {
+      // Verificar se tem parcelas vencidas
+      const hasOverdueIndicator = apt.hasOverdueInstallments ? ' 🔴' : ''
+      
+      return {
+        id: `apt-${apt.id}`,
+        title: `${getStatusIcon(apt.status)} ${apt.customer?.name || 'Cliente'} - ${apt.service?.name || 'Serviço'}${hasOverdueIndicator}`,
+        start: apt.start_time,
+        end: apt.end_time,
+        backgroundColor: getStatusColor(apt.status),
+        borderColor: getStatusColor(apt.status),
+        extendedProps: {
+          type: 'appointment',
+          appointment: apt,
+          hasOverdueInstallments: apt.hasOverdueInstallments
+        },
+      }
+    }),
     // Bloqueios
     ...blocks.map((block) => {
       // Garantir que as datas estão no formato correto (ISO string ou Date)

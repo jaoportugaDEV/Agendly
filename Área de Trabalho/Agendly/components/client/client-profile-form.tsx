@@ -36,7 +36,10 @@ export function ClientProfileForm({ customer }: ClientProfileFormProps) {
   const handleUpload = async (formData: FormData) => {
     const result = await uploadCustomerAvatar(customer.id, formData)
     if (result.success) {
-      router.refresh()
+      // Aguardar um pouco antes de fazer refresh para dar tempo do Supabase processar
+      setTimeout(() => {
+        router.refresh()
+      }, 500)
     }
     return result
   }
@@ -44,7 +47,9 @@ export function ClientProfileForm({ customer }: ClientProfileFormProps) {
   const handleRemove = async () => {
     const result = await removeCustomerAvatar(customer.id)
     if (result.success) {
-      router.refresh()
+      setTimeout(() => {
+        router.refresh()
+      }, 500)
     }
     return result
   }

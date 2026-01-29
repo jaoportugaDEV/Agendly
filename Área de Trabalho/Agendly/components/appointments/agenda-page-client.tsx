@@ -32,6 +32,7 @@ interface AgendaPageClientProps {
   services: any[]
   staff: any[]
   currentUserId: string
+  currency?: string
 }
 
 export function AgendaPageClient({
@@ -40,6 +41,7 @@ export function AgendaPageClient({
   services,
   staff,
   currentUserId,
+  currency = 'BRL'
 }: AgendaPageClientProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -329,6 +331,7 @@ export function AgendaPageClient({
             onOpenChange={setDetailsOpen}
             onUpdate={handleUpdate}
             onReschedule={handleReschedule}
+            currency={currency}
           />
 
           {/* Modal de Detalhes - Bloqueio */}

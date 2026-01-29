@@ -12,7 +12,8 @@ import {
   LayoutDashboard,
   Globe,
   Star,
-  Package
+  Package,
+  DollarSign
 } from 'lucide-react'
 
 interface SidebarProps {
@@ -62,6 +63,11 @@ const adminMenuItems = [
     title: 'Avaliações',
     href: '/avaliacoes',
     icon: Star,
+  },
+  {
+    title: 'Financeiro',
+    href: '/financeiro',
+    icon: DollarSign,
   },
   {
     title: 'Configurações',

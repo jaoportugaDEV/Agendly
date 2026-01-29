@@ -167,3 +167,98 @@ export interface AvatarUploadResult {
   url?: string
   error?: string
 }
+
+// Financial types
+export type PaymentStatus = 'pending' | 'paid' | 'installment' | 'refunded' | 'cancelled'
+export type PaymentMethod = 'cash' | 'credit_card' | 'debit_card' | 'pix' | 'transfer' | 'other'
+export type ExpenseType = 'utilities' | 'rent' | 'salary' | 'products' | 'maintenance' | 'marketing' | 'taxes' | 'insurance' | 'custom'
+export type ExpenseFrequency = 'once' | 'monthly' | 'yearly'
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash: 'Dinheiro',
+  credit_card: 'Cartão de Crédito',
+  debit_card: 'Cartão de Débito',
+  pix: 'PIX',
+  transfer: 'Transferência',
+  other: 'Outro'
+}
+
+export const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
+  utilities: 'Utilidades (Água, Luz, Gás)',
+  rent: 'Aluguel',
+  salary: 'Salários e Encargos',
+  products: 'Produtos e Materiais',
+  maintenance: 'Manutenção e Reparos',
+  marketing: 'Marketing e Publicidade',
+  taxes: 'Impostos e Taxas',
+  insurance: 'Seguros',
+  custom: 'Customizado'
+}
+
+export interface PaymentData {
+  id: string
+  appointmentId: string
+  customerId: string
+  totalAmount: number
+  paidAmount: number
+  currency: string
+  paymentStatus: PaymentStatus
+  paymentMethod?: PaymentMethod
+  isInstallment: boolean
+  installmentCount?: number
+  paidAt?: string
+  dueDate?: string
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface InstallmentData {
+  id: string
+  paymentId: string
+  appointmentId: string
+  customerId: string
+  installmentNumber: number
+  installmentAmount: number
+  status: PaymentStatus
+  dueDate: string
+  paidAt?: string
+  notes?: string
+  isOverdue: boolean
+}
+
+export interface ExpenseData {
+  id: string
+  businessId: string
+  expenseType: ExpenseType
+  categoryId?: string
+  amount: number
+  currency: string
+  description: string
+  expenseDate: string
+  dueDate?: string
+  paidAt?: string
+  isPaid: boolean
+  isRecurring: boolean
+  frequency: ExpenseFrequency
+  notes?: string
+  receiptUrl?: string
+}
+
+export interface ExpenseCategoryData {
+  id: string
+  businessId: string
+  name: string
+  description?: string
+  color: string
+  icon?: string
+}
+
+export interface FinancialSummary {
+  totalRevenue: number
+  totalExpenses: number
+  netProfit: number
+  pendingInstallments: number
+  overdueInstallments: number
+  currency: string
+}

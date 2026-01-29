@@ -21,6 +21,9 @@ import {
   Save
 } from 'lucide-react'
 import { useToast } from '@/components/ui/use-toast'
+import { PaymentConfirmationDialog } from './payment-confirmation-dialog'
+import { createPayment } from '@/lib/actions/payments'
+import type { PaymentMethod } from '@/types/shared'
 
 interface AppointmentDetailsModalProps {
   appointment: any | null
@@ -28,6 +31,7 @@ interface AppointmentDetailsModalProps {
   onOpenChange: (open: boolean) => void
   onUpdate: () => void
   onReschedule: (appointment: any) => void
+  currency: string
 }
 
 export function AppointmentDetailsModal({
@@ -36,10 +40,12 @@ export function AppointmentDetailsModal({
   onOpenChange,
   onUpdate,
   onReschedule,
+  currency
 }: AppointmentDetailsModalProps) {
   const { toast } = useToast()
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
 
   // Atualizar notes quando appointment mudar
   useState(() => {
@@ -72,6 +78,14 @@ export function AppointmentDetailsModal({
 
   const handleStatusChange = async (newStatus: string) => {
     if (!appointment) return
+
+    // Se o status for "completed", abrir modal de pagamento
+    if (newStatus === 'completed') {
+      setPaymentDialogOpen(true)
+      return
+    }
+
+    // Para outros status, atualizar diretamente
     setLoading(true)
 
     try {
@@ -88,6 +102,8 @@ export function AppointmentDetailsModal({
         description: `Agendamento marcado como ${getStatusLabel(newStatus)}`,
       })
 
+      // Fechar modal e atualizar dados
+      onOpenChange(false)
       await onUpdate()
     } catch (error) {
       toast({
@@ -95,6 +111,54 @@ export function AppointmentDetailsModal({
         description: 'Não foi possível atualizar o status',
         variant: 'destructive',
       })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePaymentConfirm = async (paymentData: {
+    paymentMethod: PaymentMethod
+    paymentType: 'cash' | 'installment'
+    installmentCount?: number
+  }) => {
+    setLoading(true)
+
+    try {
+      const result = await createPayment({
+        appointmentId: appointment.id,
+        paymentMethod: paymentData.paymentMethod,
+        paymentType: paymentData.paymentType,
+        installmentCount: paymentData.installmentCount
+      })
+
+      if (result.success) {
+        toast({
+          title: 'Pagamento confirmado!',
+          description: result.message || 'Pagamento registrado com sucesso',
+        })
+
+        // Fechar ambos os modais
+        setPaymentDialogOpen(false)
+        onOpenChange(false)
+        await onUpdate()
+        
+        return { success: true }
+      } else {
+        toast({
+          title: 'Erro no pagamento',
+          description: result.error || 'Não foi possível registrar o pagamento',
+          variant: 'destructive',
+        })
+        return { success: false, error: result.error }
+      }
+    } catch (error) {
+      console.error('Payment error:', error)
+      toast({
+        title: 'Erro',
+        description: 'Erro inesperado ao registrar pagamento',
+        variant: 'destructive',
+      })
+      return { success: false, error: 'Erro inesperado' }
     } finally {
       setLoading(false)
     }
@@ -118,6 +182,8 @@ export function AppointmentDetailsModal({
         description: 'As observações foram atualizadas com sucesso',
       })
 
+      // Fechar modal e atualizar dados
+      onOpenChange(false)
       await onUpdate()
     } catch (error) {
       toast({
@@ -302,6 +368,15 @@ export function AppointmentDetailsModal({
           </div>
         </ScrollArea>
       </DialogContent>
+
+      {/* Modal de Confirmação de Pagamento */}
+      <PaymentConfirmationDialog
+        appointment={appointment}
+        open={paymentDialogOpen}
+        onOpenChange={setPaymentDialogOpen}
+        onConfirm={handlePaymentConfirm}
+        currency={appointment?.currency || 'BRL'}
+      />
     </Dialog>
   )
 }

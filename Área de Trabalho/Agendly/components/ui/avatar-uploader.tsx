@@ -42,10 +42,12 @@ export function AvatarUploader({
   showRemoveButton = true
 }: AvatarUploaderProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const displayUrl = previewUrl || currentAvatarUrl
+  // Prioridade: preview (durante upload) > uploadedUrl (após sucesso) > currentAvatarUrl (inicial)
+  const displayUrl = previewUrl || uploadedUrl || currentAvatarUrl
 
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -87,7 +89,11 @@ export function AvatarUploader({
           title: 'Sucesso!',
           description: 'Foto de perfil atualizada com sucesso.',
         })
-        setPreviewUrl(null) // Limpar preview já que a URL real será usada
+        // Manter a URL retornada para exibir imediatamente
+        if (result.url) {
+          setUploadedUrl(result.url)
+        }
+        setPreviewUrl(null) // Limpar preview já que agora temos a URL real
       } else {
         toast({
           title: 'Erro no upload',
@@ -127,6 +133,7 @@ export function AvatarUploader({
           description: 'Foto de perfil removida com sucesso.',
         })
         setPreviewUrl(null)
+        setUploadedUrl(null) // Limpar URL após remover
       } else {
         toast({
           title: 'Erro ao remover',
@@ -156,8 +163,12 @@ export function AvatarUploader({
     <div className="flex flex-col items-center gap-4">
       {/* Avatar com overlay de upload */}
       <div className="relative group">
-        <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={displayUrl || undefined} alt="Avatar" />
+        <Avatar className={sizeClasses[size]} key={displayUrl || 'no-avatar'}>
+          <AvatarImage 
+            src={displayUrl || undefined} 
+            alt="Avatar"
+            className="object-cover"
+          />
           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold text-lg">
             {fallback}
           </AvatarFallback>

@@ -31,7 +31,10 @@ export function ProfileForm({ userId, fullName, email, avatarUrl }: ProfileFormP
   const handleUpload = async (formData: FormData) => {
     const result = await uploadUserAvatar(userId, formData)
     if (result.success) {
-      router.refresh()
+      // Aguardar um pouco antes de fazer refresh para dar tempo do Supabase processar
+      setTimeout(() => {
+        router.refresh()
+      }, 500)
     }
     return result
   }
@@ -39,7 +42,9 @@ export function ProfileForm({ userId, fullName, email, avatarUrl }: ProfileFormP
   const handleRemove = async () => {
     const result = await removeUserAvatar(userId)
     if (result.success) {
-      router.refresh()
+      setTimeout(() => {
+        router.refresh()
+      }, 500)
     }
     return result
   }

@@ -4,6 +4,7 @@ import { getAppointments } from '@/lib/actions/appointments'
 import { getServices } from '@/lib/actions/services'
 import { getStaffMembers } from '@/lib/actions/staff'
 import { AgendaPageClient } from '@/components/appointments/agenda-page-client'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function AgendaPage({
   params,
@@ -38,6 +39,16 @@ export default async function AgendaPage({
   const services = servicesResult.success ? servicesResult.data || [] : []
   const staff = staffResult.success ? staffResult.data || [] : []
 
+  // Buscar moeda da empresa
+  const supabase = await createClient()
+  const { data: business } = await supabase
+    .from('businesses')
+    .select('country_code')
+    .eq('id', params.businessId)
+    .single()
+
+  const currency = business?.country_code === 'PT' ? 'EUR' : 'BRL'
+
   return (
     <AgendaPageClient
       businessId={params.businessId}
@@ -45,6 +56,7 @@ export default async function AgendaPage({
       services={services}
       staff={staff}
       currentUserId={user.id}
+      currency={currency}
     />
   )
 }
